@@ -14,7 +14,7 @@ On AI: we highly encourage you to build with AI tools. We do, all day. But you o
 
 There's also a `data/` folder with some internal numbers we pulled: support ticket categories from the last 90 days and account info for the customers quoted below. Use it however you like.
 
-You have 72 hours from receiving this repo. We'll send you a Firecrawl API key with 10k credits, plenty for this. If you somehow burn through it, that's a conversation worth having on the call.
+You have 72 hours from receiving this repo to finish your project. Let us know if you need more Firecrawl credits.
 
 When you're done, reply with a link to a public repo containing your demo and the one-pager. Two deadlines, whichever comes first: within the 72 hours, and at least 24 hours before your scheduled call. We read your submission before we talk. Public repo means public: make sure your API key isn't in the code or the git history.
 

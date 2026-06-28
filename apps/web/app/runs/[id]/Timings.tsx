@@ -45,7 +45,7 @@ export function Timings({ t, calls }: { t: RunTimings; calls: ProbeCall[] }) {
       note: `the /search network calls · p50 ${ms(t.probeMsP50)} / slowest ${ms(t.probeMsMax)}`,
     },
     { label: 'merge + dedup', ms: t.mergeMs, note: 'combine results, drop duplicates (local)' },
-    { label: 'coverage', ms: t.coverageMs, note: 'Chao1 estimate + saturation (local)' },
+    { label: 'coverage', ms: t.coverageMs, note: 'capture-recapture estimate + saturation (local)' },
     { label: 'rank', ms: t.rankMs, note: 'RRF + BM25 + tf-idf MMR (local)' },
   ];
   const max = Math.max(1, ...phases.map((p) => p.ms));

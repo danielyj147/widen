@@ -99,17 +99,23 @@ export interface MergedSource {
   source: 'web' | 'news' | 'images';
 }
 
-/** Estimated total richness via Chao1, plus the inputs so it's auditable. */
+/**
+ * Two-sample capture–recapture estimate (Lincoln–Petersen, Chapman-corrected).
+ * Sample 1 = websites from the original-query searches; sample 2 = websites from
+ * the expanded/varied searches; the overlap drives the estimate of the total.
+ */
 export interface RecaptureEstimate {
   observedDomains: number;
-  /** domains found by exactly one probe. */
-  singletons: number;
-  /** domains found by exactly two probes. */
-  doubletons: number;
+  /** websites caught by the original-query searches (sample 1, n1). */
+  sample1: number;
+  /** websites caught by the expanded/varied searches (sample 2, n2). */
+  sample2: number;
+  /** websites caught by BOTH samples (the recapture, m). */
+  overlap: number;
   estimatedTotalDomains: number;
   /** observed / estimated, clamped to [0,1]. null when not estimable. */
   coverage: number | null;
-  method: 'chao1' | 'chao1-bias-corrected' | 'insufficient-data';
+  method: 'lincoln-petersen' | 'insufficient-data';
   caveat: string;
 }
 

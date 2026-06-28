@@ -111,7 +111,7 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
   // Coverage reflects everything DISCOVERED — compute it on the full merged set,
   // before ranking/filtering, so a minRelevance filter never inflates the
   // completeness story.
-  const coverage = buildCoverage(executedProbes, executed, merged, cfg, stopReason);
+  const coverage = buildCoverage(executedProbes, executed, merged, cfg, stopReason, query);
   const afterCoverage = now();
   // Ordering + minRelevance are presentation: relevance (RRF + BM25) diversified
   // by MMR, then sub-threshold sources dropped from the displayed list.
@@ -148,9 +148,9 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
     probeResults: executed,
     sources,
     coverage,
-    // Firecrawl /search bills roughly per result returned (≈1 credit/result;
-    // we never scrape, so no scrape surcharge). This is an estimate.
-    estimatedCredits: coverage.totalRawResults,
+    // Firecrawl /search bills 2 credits per 10 results, rounded up *per call*
+    // (no scrape surcharge — we never scrape). Summed per probe.
+    estimatedCredits: executed.reduce((a, r) => a + 2 * Math.ceil(r.results.length / 10), 0),
     timings,
   };
 }

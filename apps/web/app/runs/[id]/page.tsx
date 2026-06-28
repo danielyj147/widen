@@ -146,10 +146,11 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           info={
             <>
               Our best guess at the share of findable websites this run actually found.{' '}
-              <b>How we guess:</b> if many websites show up in just one of our searches, there are likely
-              many more we haven’t hit yet — the way spotting lots of one-off animals while sampling a
-              forest means more species are out there. We turn that overlap into an estimate (a standard
-              method called capture–recapture). It’s a guess, not a guarantee.
+              <b>How we guess:</b> we treat the original-query searches and the expanded searches as two
+              independent nets cast into the same pool. If the two nets catch mostly *different* websites,
+              the pool is big and we’ve seen little of it; if they catch mostly the *same* ones, we’ve
+              likely seen it all. That’s the standard capture–recapture method (Lincoln–Petersen) — here
+              the two shared {recap.overlap} of {recap.observedDomains} websites. A guess, not a guarantee.
             </>
           }
         />

@@ -1,51 +1,61 @@
 import { describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/config.js';
-import { buildCoverage, chao1, domainIncidence, saturationCurve } from '../src/coverage.js';
+import { buildCoverage, lincolnPetersen, partitionSamples, saturationCurve } from '../src/coverage.js';
 import { mergeResults } from '../src/merge.js';
 import type { MergedSource, Probe, ProbeResult } from '../src/types.js';
 
-describe('chao1', () => {
-  it('estimates unseen domains from singletons and doubletons', () => {
-    // 10 observed domains, 6 singletons, 2 doubletons -> 10 + 36/4 = 19
-    const incidence = [1, 1, 1, 1, 1, 1, 2, 2, 3, 3];
-    const est = chao1(incidence);
-    expect(est.observedDomains).toBe(10);
-    expect(est.singletons).toBe(6);
-    expect(est.doubletons).toBe(2);
+describe('lincolnPetersen', () => {
+  it('estimates the total from two samples and their overlap (Chapman)', () => {
+    // n1=10, n2=10, m=5 -> (11*11)/6 - 1 = 19.17 -> 19; observed 15
+    const est = lincolnPetersen(10, 10, 5, 15);
+    expect(est.method).toBe('lincoln-petersen');
     expect(est.estimatedTotalDomains).toBe(19);
-    expect(est.coverage).toBeCloseTo(10 / 19, 5);
-    expect(est.method).toBe('chao1');
+    expect(est.coverage).toBeCloseTo(15 / 19.1667, 2);
   });
 
-  it('uses bias-corrected form when no doubletons', () => {
-    const est = chao1([1, 1, 1, 3]); // f1=3,f2=0 -> 4 + 3*2/2 = 7
-    expect(est.method).toBe('chao1-bias-corrected');
-    expect(est.estimatedTotalDomains).toBe(7);
-  });
-
-  it('reports coverage 100% when everything is well-sampled', () => {
-    const est = chao1([3, 3, 4, 5]); // no singletons -> estimate == observed
+  it('estimates near-complete coverage when the samples overlap heavily', () => {
+    // n1=n2=m=10 -> (11*11)/11 - 1 = 10; observed 10 -> coverage 1.0
+    const est = lincolnPetersen(10, 10, 10, 10);
     expect(est.coverage).toBe(1);
   });
 
-  it('handles the empty case', () => {
-    const est = chao1([]);
-    expect(est.coverage).toBeNull();
-    expect(est.method).toBe('insufficient-data');
+  it('estimates a huge pool when the two samples barely overlap', () => {
+    const est = lincolnPetersen(10, 10, 1, 19); // (121/2)-1 = 59.5
+    expect(est.estimatedTotalDomains).toBe(60);
+    expect(est.coverage!).toBeLessThan(0.35);
+  });
+
+  it('cannot estimate from a single sample', () => {
+    expect(lincolnPetersen(10, 0, 0, 10).coverage).toBeNull();
+    expect(lincolnPetersen(0, 0, 0, 0).method).toBe('insufficient-data');
   });
 });
 
-describe('domainIncidence', () => {
-  it('counts distinct probes per domain across multiple urls', () => {
+describe('partitionSamples', () => {
+  it('splits websites by original-query (sample 1) vs expanded-query (sample 2)', () => {
+    const probes = new Map<string, Probe>([
+      ['orig', { id: 'orig', query: 'electric cars', axis: 'base', params: {}, rationale: '' }],
+      ['exp', { id: 'exp', query: 'electric cars review', axis: 'reformulation', params: {}, rationale: '' }],
+    ]);
     const sources: MergedSource[] = [
-      { url: 'https://a.com/1', domain: 'a.com', title: '', snippet: '', foundByProbes: ['p1'], bestPosition: 1, rrfScore: 0, bm25Score: 0, relevance: 0, rankScore: 0, freshness: 0, authority: 0, source: 'web' },
-      { url: 'https://a.com/2', domain: 'a.com', title: '', snippet: '', foundByProbes: ['p2'], bestPosition: 2, rrfScore: 0, bm25Score: 0, relevance: 0, rankScore: 0, freshness: 0, authority: 0, source: 'web' },
-      { url: 'https://b.com', domain: 'b.com', title: '', snippet: '', foundByProbes: ['p1'], bestPosition: 1, rrfScore: 0, bm25Score: 0, relevance: 0, rankScore: 0, freshness: 0, authority: 0, source: 'web' },
+      mkSource('https://a.com', ['orig']), // sample 1 only
+      mkSource('https://b.com', ['exp']), // sample 2 only
+      mkSource('https://c.com', ['orig', 'exp']), // both -> overlap
     ];
-    // a.com seen by p1+p2 => 2; b.com by p1 => 1
-    expect(domainIncidence(sources).sort()).toEqual([1, 2]);
+    const p = partitionSamples(sources, probes, 'electric cars');
+    expect(p.n1).toBe(2); // a, c
+    expect(p.n2).toBe(2); // b, c
+    expect(p.overlap).toBe(1); // c
+    expect(p.observed).toBe(3);
   });
 });
+
+function mkSource(url: string, foundByProbes: string[]): MergedSource {
+  return {
+    url, domain: new URL(url).hostname, title: '', snippet: '', foundByProbes, bestPosition: 1,
+    rrfScore: 0, bm25Score: 0, relevance: 0, rankScore: 0, freshness: 0, authority: 0, source: 'web',
+  };
+}
 
 function pr(probeId: string, urls: string[]): ProbeResult {
   return {
@@ -74,18 +84,23 @@ describe('saturationCurve', () => {
 
 describe('buildCoverage verdict', () => {
   const cfg = resolveConfig({ saturationMinNewDomains: 2, saturationPatience: 2 });
-  const probes: Probe[] = ['p1', 'p2', 'p3'].map((id) => ({
-    id, query: 'q', axis: 'base', params: {}, rationale: '',
-  }));
+  // p1 = original query (sample 1); p2/p3 = expanded queries (sample 2)
+  const probes: Probe[] = [
+    { id: 'p1', query: 'q', axis: 'base', params: {}, rationale: '' },
+    { id: 'p2', query: 'q review', axis: 'reformulation', params: {}, rationale: '' },
+    { id: 'p3', query: 'q guide', axis: 'reformulation', params: {}, rationale: '' },
+  ];
 
-  it('flags thin coverage when many domains are singletons', () => {
+  it('flags thin coverage when the two samples barely overlap', () => {
     const results = [
       pr('p1', ['https://a.com', 'https://b.com', 'https://c.com']),
       pr('p2', ['https://d.com', 'https://e.com']),
       pr('p3', ['https://f.com', 'https://g.com']),
     ];
     const sources = mergeResults(results);
-    const cov = buildCoverage(probes, results, sources, cfg, 'probes-exhausted');
+    const cov = buildCoverage(probes, results, sources, cfg, 'probes-exhausted', 'q');
+    expect(cov.recapture.method).toBe('lincoln-petersen');
+    expect(cov.recapture.overlap).toBe(0); // disjoint samples
     expect(cov.verdict).toBe('thin');
     expect(cov.uniqueDomains).toBe(7);
   });
@@ -93,7 +108,7 @@ describe('buildCoverage verdict', () => {
   it('records failures as first-class', () => {
     const failing: ProbeResult = { probeId: 'p2', status: 'rate-limited', results: [], error: '429', ms: 1, attempts: 3 };
     const results = [pr('p1', ['https://a.com']), failing];
-    const cov = buildCoverage(probes, results, mergeResults(results), cfg, 'probes-exhausted');
+    const cov = buildCoverage(probes, results, mergeResults(results), cfg, 'probes-exhausted', 'q');
     expect(cov.probesFailed).toBe(1);
     expect(cov.failures[0]!.status).toBe('rate-limited');
   });

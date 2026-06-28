@@ -77,18 +77,17 @@ export function deterministicProbes(query: string, cfg: RunConfig): Probe[] {
     }
   }
 
-  // 3. source-type — the single strongest lever for the long tail.
+  // 3. source-type — the single strongest lever for the long tail. Firecrawl
+  //    bills 2 credits per 10 results *per call* (rounded up), so we pack the
+  //    non-web verticals into ONE call and all categories into ONE call rather
+  //    than one call each — same query, same-or-fewer credits, fewer requests.
   if (axes.has('source-type')) {
-    if (sources.has('news')) {
-      out.push(mk(q, 'source-type', { limit, sources: ['news'] }, 'news vertical: trade and regional press'));
+    const extraSources = ([...sources].filter((s) => s !== 'web') as Array<'news' | 'images'>).sort();
+    if (extraSources.length) {
+      out.push(mk(q, 'source-type', { limit, sources: extraSources }, `verticals: ${extraSources.join(' · ')}`));
     }
-    if (sources.has('images')) {
-      out.push(mk(q, 'source-type', { limit, sources: ['images'] }, 'image vertical: visual sources'));
-    }
-    for (const cat of cfg.categories) {
-      const label =
-        cat === 'research' ? 'academic and research sources' : cat === 'pdf' ? 'PDF reports and whitepapers' : 'GitHub repositories';
-      out.push(mk(q, 'source-type', { limit, categories: [cat] }, label));
+    if (cfg.categories.length) {
+      out.push(mk(q, 'source-type', { limit, categories: cfg.categories }, `categories: ${cfg.categories.join(' · ')}`));
     }
     for (const s of SOURCE_TYPE_QUERIES) {
       out.push(mk(`${q} ${s.suffix}`, 'source-type', web(), s.rationale));

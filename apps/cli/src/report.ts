@@ -24,10 +24,10 @@ export function renderArtifact(a: RunArtifact): string {
   if (recap.coverage != null) {
     L.push(
       `  estimated coverage ${c.bold(pct(recap.coverage))} ` +
-        c.dim(`(~${recap.estimatedTotalDomains} domains discoverable; ${recap.singletons} found by a single probe)`),
+        c.dim(`(~${recap.estimatedTotalDomains} findable; two searches shared ${recap.overlap} of ${recap.observedDomains})`),
     );
   } else {
-    L.push(c.dim('  coverage estimate unavailable (too few sources)'));
+    L.push(c.dim('  coverage estimate unavailable (need two independent searches)'));
   }
 
   // saturation sparkline

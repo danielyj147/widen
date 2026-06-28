@@ -12,70 +12,99 @@ import type {
 } from './types.js';
 
 /**
- * Chao1 richness estimator (Chao, 1984), the standard lower-bound estimate of
- * how many *unseen* classes a sampling effort missed. Here a "class" is a domain
- * and a "sample" is a probe: a domain found by only one probe (a singleton) is
- * evidence that more such domains exist but were not hit. If many domains are
- * singletons, we have almost certainly missed others, and coverage is low.
+ * Lincoln–Petersen capture–recapture estimator (Chapman-corrected, 1951) — the
+ * classic two-sample method for estimating an unseen population.
  *
- *   estimated total = observed + f1^2 / (2 * f2)
+ *   N̂ = (n1 + 1)(n2 + 1) / (m + 1) − 1
  *
- * where f1 = domains seen by exactly one probe, f2 = by exactly two. When f2 = 0
- * we use the bias-corrected form. This is an estimate, not a guarantee, and it
- * assumes probes sample somewhat independently — we say so in the caveat.
+ * where n1 = websites caught by sample 1, n2 = by sample 2, m = caught by both.
+ * Intuition: if the two independent searches share *few* websites (small m
+ * relative to n1·n2), the pool must be large and we've seen little of it; if they
+ * share *most* of what they found, we've likely seen it all. Chapman's +1s remove
+ * the small-sample bias and keep it defined at m = 0.
+ *
+ * The two samples must be reasonably independent. We use the *original-query*
+ * searches (varied settings) as sample 1 and the *expanded-query* searches as
+ * sample 2 — different query words give the most independence. Returned
+ * separately so callers can decide; pass observed = |sample1 ∪ sample2|.
  */
-export function chao1(domainIncidence: number[]): RecaptureEstimate {
-  const observed = domainIncidence.length;
-  const f1 = domainIncidence.filter((n) => n === 1).length;
-  const f2 = domainIncidence.filter((n) => n === 2).length;
-
+export function lincolnPetersen(
+  n1: number,
+  n2: number,
+  overlap: number,
+  observed: number,
+): RecaptureEstimate {
   if (observed === 0) {
-    return {
-      observedDomains: 0,
-      singletons: 0,
-      doubletons: 0,
-      estimatedTotalDomains: 0,
-      coverage: null,
-      method: 'insufficient-data',
-      caveat: 'No sources were found, so coverage cannot be estimated.',
-    };
+    return blankEstimate(0, 0, 0, 'No websites were found, so coverage cannot be estimated.');
   }
-
-  let estimatedTotal: number;
-  let method: RecaptureEstimate['method'];
-  if (f2 > 0) {
-    estimatedTotal = observed + (f1 * f1) / (2 * f2);
-    method = 'chao1';
-  } else {
-    // bias-corrected form, valid when there are no doubletons.
-    estimatedTotal = observed + (f1 * (f1 - 1)) / 2;
-    method = 'chao1-bias-corrected';
+  if (n1 === 0 || n2 === 0) {
+    return blankEstimate(
+      n1,
+      n2,
+      overlap,
+      'Coverage needs two independent searches to estimate, and this run had only one kind. Enable query expansion or vary the settings to get an estimate.',
+      observed,
+    );
   }
-
-  const coverage = estimatedTotal > 0 ? Math.min(1, observed / estimatedTotal) : null;
+  const est = ((n1 + 1) * (n2 + 1)) / (overlap + 1) - 1;
+  const coverage = est > 0 ? Math.min(1, observed / est) : null;
   return {
     observedDomains: observed,
-    singletons: f1,
-    doubletons: f2,
-    estimatedTotalDomains: Math.round(estimatedTotal),
+    sample1: n1,
+    sample2: n2,
+    overlap,
+    estimatedTotalDomains: Math.round(est),
     coverage,
-    method,
+    method: 'lincoln-petersen',
     caveat:
-      'A statistical estimate: it assumes the different searches find websites ' +
-      'somewhat independently. Many websites showing up in only one search is ' +
-      'strong evidence that more remain unfound.',
+      'A two-sample capture–recapture estimate (Lincoln–Petersen). Sample 1 = ' +
+      'websites from the original-query searches, sample 2 = from the expanded/' +
+      'varied searches. The fewer the two share, the more we estimate remain ' +
+      'unfound. It assumes the two samples find websites somewhat independently.',
   };
 }
 
-/** Per-domain incidence = number of distinct probes that surfaced that domain. */
-export function domainIncidence(sources: MergedSource[]): number[] {
-  const probesByDomain = new Map<string, Set<string>>();
+function blankEstimate(
+  n1: number,
+  n2: number,
+  overlap: number,
+  caveat: string,
+  observed = 0,
+): RecaptureEstimate {
+  return {
+    observedDomains: observed,
+    sample1: n1,
+    sample2: n2,
+    overlap,
+    estimatedTotalDomains: observed,
+    coverage: null,
+    method: 'insufficient-data',
+    caveat,
+  };
+}
+
+/**
+ * Partition the found websites into the two capture-recapture samples by whether
+ * the probe that found them used the original query (sample 1: same query, varied
+ * settings) or an expanded query (sample 2). Returns {n1, n2, overlap, observed}.
+ */
+export function partitionSamples(
+  sources: MergedSource[],
+  probeById: Map<string, Probe>,
+  originalQuery: string,
+): { n1: number; n2: number; overlap: number; observed: number } {
+  const orig = originalQuery.trim().toLowerCase();
+  const s1 = new Set<string>();
+  const s2 = new Set<string>();
   for (const s of sources) {
-    const set = probesByDomain.get(s.domain) ?? new Set<string>();
-    for (const p of s.foundByProbes) set.add(p);
-    probesByDomain.set(s.domain, set);
+    for (const pid of s.foundByProbes) {
+      const expanded = (probeById.get(pid)?.query ?? orig).trim().toLowerCase() !== orig;
+      (expanded ? s2 : s1).add(s.domain);
+    }
   }
-  return [...probesByDomain.values()].map((s) => s.size);
+  let overlap = 0;
+  for (const d of s1) if (s2.has(d)) overlap++;
+  return { n1: s1.size, n2: s2.size, overlap, observed: new Set([...s1, ...s2]).size };
 }
 
 /** Cumulative unique URLs/domains in execution order — the saturation curve. */
@@ -131,7 +160,7 @@ function decideVerdict(
       verdict: 'thin',
       reason:
         cov != null && cov < 0.5
-          ? `We estimate this run found only about ${pct(cov)} of the websites out there — ${recapture.singletons} of ${recapture.observedDomains} websites showed up in just one search, a sign many more exist. Likely incomplete.`
+          ? `We estimate this run found only about ${pct(cov)} of the websites out there — the original and expanded searches shared just ${recapture.overlap} of ${recapture.observedDomains} websites, a sign many more exist. Likely incomplete.`
           : 'New websites were still showing up in the final searches — the run stopped before results leveled off.',
     };
   }
@@ -151,6 +180,7 @@ export function buildCoverage(
   sources: MergedSource[],
   cfg: RunConfig,
   stopReason: StopReason,
+  query: string,
 ): CoverageReport {
   const probeById = new Map(probes.map((p) => [p.id, p]));
   const orderedIds = probeResults.map((r) => r.probeId);
@@ -166,7 +196,8 @@ export function buildCoverage(
   }
 
   const curve = saturationCurve(orderedIds, sourcesByProbe);
-  const recapture = chao1(domainIncidence(sources));
+  const { n1, n2, overlap, observed } = partitionSamples(sources, probeById, query);
+  const recapture = lincolnPetersen(n1, n2, overlap, observed);
   const { verdict, reason } = decideVerdict(curve, recapture, cfg);
 
   // diversity

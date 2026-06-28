@@ -2,7 +2,7 @@ import type { SaturationPoint } from '@widen/core';
 
 /**
  * The saturation curve: cumulative unique domains (line) and per-probe new
- * websites (bars), with the Chao1 estimate of the total out there as a dashed
+ * websites (bars), with the capture-recapture estimate of the total as a dashed
  * reference. A line that keeps climbing = still finding more; a flat tail =
  * saturated. Pure SVG, themed via CSS tokens.
  */

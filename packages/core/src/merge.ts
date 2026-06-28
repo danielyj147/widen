@@ -52,6 +52,7 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
           rrfScore: rrfContribution(r.position),
           bm25Score: 0, // set later by the ranking step
           relevance: 0,
+          rankScore: 0,
           source: r.source,
         });
       }

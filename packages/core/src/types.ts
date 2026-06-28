@@ -81,6 +81,13 @@ export interface MergedSource {
   bm25Score: number;
   /** Blended relevance in [0,1] (normalized RRF + BM25). Set by ranking. */
   relevance: number;
+  /**
+   * Final rank score in [0,1] — relevance after the MMR diversity adjustment.
+   * This is what orders the displayed list (monotonically non-increasing down
+   * the list), so it explains the order; `relevance` alone does not. Equals
+   * `relevance` when reranking is off.
+   */
+  rankScore: number;
   source: 'web' | 'news' | 'images';
 }
 

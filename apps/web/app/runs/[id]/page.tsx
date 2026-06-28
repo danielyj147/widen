@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { Star } from 'lucide-react';
 import type { Probe, Verdict } from '@widen/core';
 import { getRun } from '@/lib/runs';
 import { cn } from '@/lib/utils';
@@ -266,9 +265,10 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <CardTitle className="flex items-center gap-1.5 text-sm">
             Results ({run.sources.length})
             <InfoTip>
-              Every page found, with duplicates removed and ordered best-first. A
-              <Star className="mx-1 inline size-3 fill-amber-400 text-amber-400" /> means only one search
-              found it — usually the hard-to-find pages a single search misses.
+              Every page found, with duplicates removed and ordered by <b>rank</b> — relevance to your
+              query, lowered a little when a page repeats one already above it (diversity). A
+              <span className="bg-amber-500/15 text-amber-400 mx-1 rounded px-1">rare</span> tag means only
+              one search found it — usually the hard-to-find pages a single search misses.
             </InfoTip>
           </CardTitle>
         </CardHeader>
@@ -278,19 +278,20 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-6" />
-                <TableHead className="w-44">website</TableHead>
+                <TableHead className="w-14" />
+                <TableHead className="w-40">website</TableHead>
                 <TableHead>page</TableHead>
                 <TableHead className="w-20">
                   <span className="inline-flex items-center gap-1">
-                    match
+                    rank
                     <InfoTip>
-                      How well the page matches your query, relative to the others in this run (green =
-                      strong, red = weak). Used to order the list.
+                      The score that orders this list: relevance to your query, lowered a little when a
+                      page repeats one already above it (diversity). Green = high, red = low. It only ever
+                      goes down as you read, so the order always makes sense.
                     </InfoTip>
                   </span>
                 </TableHead>
-                <TableHead className="w-20">found by</TableHead>
+                <TableHead className="w-16">found by</TableHead>
                 <TableHead className="w-14">type</TableHead>
               </TableRow>
             </TableHeader>
@@ -299,7 +300,12 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                 <TableRow key={s.url}>
                   <TableCell>
                     {s.foundByProbes.length === 1 && (
-                      <Star className="size-3 fill-amber-400 text-amber-400" />
+                      <span
+                        className="bg-amber-500/15 text-amber-400 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                        title="Found by only one search — a normal single search would miss it."
+                      >
+                        rare
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="truncate font-mono text-xs">{s.domain}</TableCell>
@@ -315,10 +321,13 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                     </a>
                   </TableCell>
                   <TableCell>
-                    <div className="bg-muted h-1.5 w-12 overflow-hidden rounded" title={`relevance ${s.relevance.toFixed(2)}`}>
+                    <div
+                      className="bg-muted h-1.5 w-12 overflow-hidden rounded"
+                      title={`rank ${s.rankScore.toFixed(2)} · match ${s.relevance.toFixed(2)}`}
+                    >
                       <div
-                        className={cn('h-full rounded', relevanceColor(s.relevance))}
-                        style={{ width: `${Math.max(4, s.relevance * 100)}%` }}
+                        className={cn('h-full rounded', scoreColor(s.rankScore))}
+                        style={{ width: `${Math.max(4, s.rankScore * 100)}%` }}
                       />
                     </div>
                   </TableCell>
@@ -346,8 +355,8 @@ function coverageColor(cov: number | null): string {
   return 'text-rose-400';
 }
 
-/** Color a relevance score (0..1, relative to this run) green/amber/red. */
-function relevanceColor(r: number): string {
+/** Color a 0..1 score (relative to this run) green/amber/red. */
+function scoreColor(r: number): string {
   if (r >= 0.66) return 'bg-emerald-500';
   if (r >= 0.33) return 'bg-amber-500';
   return 'bg-rose-500';

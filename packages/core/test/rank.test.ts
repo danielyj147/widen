@@ -15,6 +15,7 @@ function src(partial: Partial<MergedSource> & { url: string }): MergedSource {
     rrfScore: partial.rrfScore ?? 0,
     bm25Score: 0,
     relevance: 0,
+    rankScore: 0,
     source: 'web',
   };
 }
@@ -95,6 +96,13 @@ describe('mmrOrder (cosine tf-idf similarity)', () => {
     // top relevance still first; then the dissimilar doc beats the near-duplicate
     expect(ordered[0]!.url).toBe('https://a.com/1');
     expect(ordered[1]!.url).toBe('https://c.com');
+  });
+
+  it('assigns a rankScore that never increases down the order (so it matches the order)', () => {
+    const ordered = mmrOrder(sources, rel, 0.5);
+    for (let i = 1; i < ordered.length; i++) {
+      expect(ordered[i]!.rankScore).toBeLessThanOrEqual(ordered[i - 1]!.rankScore + 1e-9);
+    }
   });
 });
 

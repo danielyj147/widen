@@ -77,6 +77,7 @@ export function mmrOrder(sources: MergedSource[], relevance: number[], diversity
   const vecs = tfidfVectors(sources.map((s) => tokenize(`${s.title} ${s.snippet}`)));
   const remaining = sources.map((_, i) => i);
   const selected: number[] = [];
+  const marginal: number[] = []; // the MMR score each pick won with (non-increasing)
 
   while (remaining.length > 0) {
     let bestPos = 0;
@@ -95,8 +96,14 @@ export function mmrOrder(sources: MergedSource[], relevance: number[], diversity
       }
     }
     selected.push(remaining[bestPos]!);
+    marginal.push(bestScore);
     remaining.splice(bestPos, 1);
   }
+
+  // The marginal is provably non-increasing in pick order, so normalizing it
+  // gives a per-item rank score consistent with the displayed order.
+  const norm = normalize(marginal);
+  selected.forEach((i, k) => (sources[i]!.rankScore = norm[k]!));
   return selected.map((i) => sources[i]!);
 }
 
@@ -112,7 +119,11 @@ export function orderSources(sources: MergedSource[], query: string, opts: RankO
   const min = opts.minRelevance ?? 0;
   const kept = min > 0 ? sources.filter((s) => s.relevance >= min) : sources;
 
-  if (!opts.rerank) return kept; // annotated, order preserved
+  if (!opts.rerank) {
+    // discovery order: no diversity step, so the rank score is just relevance.
+    kept.forEach((s) => (s.rankScore = s.relevance));
+    return kept;
+  }
   const relevance = kept.map((s) => s.relevance);
   return mmrOrder(kept, relevance, opts.diversity);
 }

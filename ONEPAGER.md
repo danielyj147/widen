@@ -1,4 +1,19 @@
-# widen — search wider, not deeper
+# FireCrawl Search Studio
+
+## Which problem should I solve?
+
+1. Work Window: 6/26 7:30 PM - 6/27 4:30 PM (need to submit 24 hours before the interview)
+2. Focus on enterprise & scale customers 
+3. Focus on features that do not exist
+4. Focus on 
+5. 
+
+
+One fundamental question: why would you ever use Firecrawl over Google? ==> SEO avoidance, more options, filters, preimer for scaper. 
+
+
+Future feature?: site reputation threashold?
+
 
 A recall-maximizing layer on Firecrawl `/search` that probes a topic many
 different ways, merges the results, and **reports how complete the search
@@ -119,6 +134,17 @@ query ─▶ expand ─▶ fan-out ─▶ merge/dedup ─▶ coverage report ─
     1 = maximize spread. A **`--min-relevance`** filter can drop sub-threshold
     sources from the *displayed* list (coverage is still computed on everything
     found, so the completeness story stays honest).
+  - **What orders the list, and what the UI shows.** The final order is relevance
+    **diversified by MMR** — so a *very* relevant page that repeats one already
+    above it is intentionally placed lower. Showing raw relevance next to that
+    order is confusing (a high-relevance item can sit below a lower one). So each
+    result carries a **`rankScore`** = the MMR marginal it was selected with,
+    which is **provably non-increasing in pick order** (each pick's margin ≤ the
+    previous: the candidate set shrinks and the similarity penalty only grows).
+    Normalized, it's exactly what Studio plots as the per-result **rank** bar, so
+    the bar always decreases down the list and the order is self-explanatory;
+    pure relevance is still available on hover. (A unit test asserts the
+    monotonicity.)
 - **Coverage** — the trust artifact (below).
 - **Adaptive stop** — keep probing until new domains stop appearing
   (`saturated`), the budget is hit (`budget-exhausted`), or candidates run out.

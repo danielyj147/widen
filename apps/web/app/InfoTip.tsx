@@ -13,7 +13,11 @@ export function InfoTip({ children }: { children: React.ReactNode }) {
           <span className="sr-only">more info</span>
         </button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-xs text-[12px] leading-snug">{children}</TooltipContent>
+      <TooltipContent className="max-w-xs">
+        {/* one block child: the base content is a flex row (for kbd badges), so
+            multiple inline children would split into "columns" — wrap them. */}
+        <span className="block text-[12px] font-normal leading-relaxed">{children}</span>
+      </TooltipContent>
     </Tooltip>
   );
 }

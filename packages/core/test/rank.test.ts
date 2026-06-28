@@ -45,8 +45,8 @@ describe('bm25Scores', () => {
   });
 });
 
-describe('scoreRelevance', () => {
-  it('writes blended relevance and raw bm25 back onto sources', () => {
+describe('scoreRelevance (RRF fuses probe lists + BM25 list)', () => {
+  it('writes normalized relevance and raw bm25 back onto sources', () => {
     const sources = [
       src({ url: 'https://a.com', title: 'battery suppliers', rrfScore: 0.03 }),
       src({ url: 'https://b.com', title: 'cooking recipes', rrfScore: 0.01 }),
@@ -55,6 +55,20 @@ describe('scoreRelevance', () => {
     expect(sources[0]!.relevance).toBe(rel[0]);
     expect(sources[0]!.relevance).toBeGreaterThan(sources[1]!.relevance);
     expect(sources[0]!.bm25Score).toBeGreaterThan(0);
+  });
+
+  it('a higher BM25 weight lifts the query-matching source even past higher RRF', () => {
+    const make = () => [
+      src({ url: 'https://hi-rrf.com', title: 'unrelated', rrfScore: 0.05 }), // strong probe corroboration, off-topic
+      src({ url: 'https://hi-bm25.com', title: 'battery suppliers list', rrfScore: 0.01 }), // weak probes, on-topic
+    ];
+    const lowW = make();
+    scoreRelevance(lowW, 'battery suppliers', 0);
+    expect(lowW[0]!.relevance).toBeGreaterThan(lowW[1]!.relevance); // RRF-only: corroboration wins
+
+    const highW = make();
+    scoreRelevance(highW, 'battery suppliers', 20);
+    expect(highW[1]!.relevance).toBeGreaterThan(highW[0]!.relevance); // BM25 grounding flips it
   });
 });
 

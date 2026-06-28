@@ -53,25 +53,42 @@ query ─▶ expand ─▶ fan-out ─▶ merge/dedup ─▶ coverage report ─
 - **Merge** — conservative URL canonicalization (strip tracking params, www,
   fragments; never collapse distinct paths) with full **provenance**: which
   probes found each source.
-- **Rank** — on by default (`--no-rerank` for raw discovery order). Two parts:
-  - **Relevance** blends two signals. **(1) Reciprocal Rank Fusion** over each
-    probe's rank list — the right method here precisely *because Firecrawl returns
-    ranks, not scores* (the SDK gives positions, no relevance score), so you
-    cannot average BM25 across probes; RRF needs only ranks and is robust to
-    cross-probe incomparability. **(2) BM25** of each result's title+snippet
-    against the *original* query — an independent, query-grounded signal that
-    re-anchors relevance after a probe reformulates the query (a hit that ranked
-    well for `"X alternatives"` but barely mentions `X` scores low). RRF leads
-    (0.65), BM25 follows (0.35) — snippets are short and SEO-shaped, so BM25 is a
-    nudge, not ground truth, and we don't pretend otherwise.
-  - **Diversity** via **Maximal Marginal Relevance**: `argmax λ·Rel(d) −
-    (1−λ)·max sim(d, chosen)`, where similarity is same-domain (drives *source*
-    diversity) plus title/snippet overlap (catches syndicated near-dupes). The
-    **`--diversity` flag (0–1, default 0.45)** sets `λ = 1−diversity`, so the
-    same tool serves "rank the obvious best" (0) and "spread across as many
-    distinct sources as possible" (1). Verified live: at 0 the top is SEO review
-    aggregators; at 1 it surfaces FCC-filing PDFs and academic papers — the long
-    tail — while keeping the #1 relevant hit.
+- **Rank** — on by default (`--no-rerank` for raw discovery order).
+
+  **Why re-rank lists that are already ranked?** Because after fan-out there is
+  *no single ranked list to keep* — there are ~20, one per probe, each ranked for
+  a *different* query variant, and merging+dedup destroys their per-list order (a
+  source at rank 3 in probe A and rank 9 in probe B has no global rank). We must
+  *construct* the one global order, and the order we want is not the one
+  Firecrawl optimizes for: its per-list ranking favors generic popularity — the
+  "same SEO winners" the customer is complaining about. So ranking here does
+  three things no single Firecrawl list does: reward **cross-probe agreement**,
+  re-ground to the **original query**, and inject **source diversity**.
+
+  - **Relevance — one RRF fusion, not a weighted blend.** A would-be second
+    signal, BM25, *is itself a ranking*, so it doesn't get score-averaged with
+    RRF (averaging incomparable score scales is the exact sin RRF exists to
+    avoid). The architecture is **one Reciprocal Rank Fusion** that can take each
+    probe's list plus **one more list from BM25** of title+snippet vs the
+    *original* query — RRF needs only ranks, the right tool *because Firecrawl
+    returns ranks, not scores* (confirmed in the SDK types). How many "votes" the
+    BM25 list gets is **set by evaluation, not guessed** — and the evaluation
+    (below) said BM25 didn't help, so the default weight is **0**: probe-list RRF
+    alone, with BM25 computed for transparency but out of the default order. The
+    fusion is the design; the weight is a measured, re-runnable decision, not a
+    customer knob.
+  - **Diversity — MMR**: `argmax λ·Rel(d) − (1−λ)·max sim(d, chosen)`,
+    `λ = 1−diversity`. Similarity is **same-domain ⇒ 1.0** (two pages from one
+    domain are one *source*, fully redundant for source diversity — not a tuned
+    constant) plus title/snippet overlap for cross-domain near-dupes. MMR's
+    similarity *is* the diversity mechanism (not a second discount), and its
+    standard `max`-over-selected form gives a domain's **first/best hit full
+    credit** while each additional hit is demoted and out-competed by other
+    domains — so a domain's 2nd/3rd results sink progressively rather than all by
+    the same amount. The **`--diversity` flag (0–1, default 0.45)** is the single
+    intentional knob: 0 = rank the obvious best, 1 = spread across sources.
+    Verified live: at 0 the top is SEO review aggregators; at 1 it surfaces
+    FCC-filing PDFs and academic papers — the long tail — keeping the #1 hit.
 - **Coverage** — the trust artifact (below).
 - **Adaptive stop** — keep probing until new domains stop appearing
   (`saturated`), the budget is hit (`budget-exhausted`), or candidates run out.
@@ -100,8 +117,32 @@ customer means: `diysolarforum.com`, `electricunicycle.org`, `carnewschina.com`,
 a `mitsui.com` PDF, EU/IEEE primary sources — and honestly flagged itself **thin
 (18%)** because 6 probes isn't enough. That honesty *is* the feature.
 
-37 unit/integration tests cover the math (Chao1, saturation, dedup, retry
-classification, adaptive stop) against a fake client — no network, no credits.
+`npm run eval:rank` is how the ranking defaults are **chosen, not guessed**: it
+fetches each topic's merged pool, has an LLM grade every pooled result's
+relevance (0–3) to the original query, and scores each ordering strategy by
+**nDCG@10** while sweeping the BM25 fusion weight. It changed a decision. With a
+strong-enough judge (`deepseek-r1:14b`) the grades had real variance and the
+strategies separated clearly:
+
+```
+baseline   0.521   rrf_only 0.388   rrf+bm25@5 0.359 … rrf+bm25@12 0.278   bm25_only 0.163
+```
+
+BM25 fusion **did not help relevance ranking — it slightly hurt, monotonically
+worse with weight.** So the evidence-based default is **BM25 weight 0** (it's
+still computed and shown for transparency, just out of the default fusion). This
+is the whole point of the harness: I built a query-grounding signal, evaluated
+it, and the data told me to keep it off — better than shipping a plausible magic
+number. Two honest caveats: it's 2 topics with a local judge (directional, not
+conclusive), and nDCG measures *relevance only*, which structurally can't credit
+widen's real value — completeness and **diversity**, where a diversity reorder
+*intends* to trade some relevance for source spread. The harness is
+judge-pluggable (`LLM_PROVIDER=anthropic`) and one command to re-run on more
+topics.
+
+55 unit/integration tests cover the math (Chao1, saturation, dedup, BM25, RRF
+fusion, MMR, nDCG, retry classification, adaptive stop) against a fake client —
+no network, no credits.
 
 ---
 
@@ -124,6 +165,13 @@ classification, adaptive stop) against a fake client — no network, no credits.
   dashboard reads the folder. Anything heavier hasn't earned its place at this
   scope.
 - **No anti-bot / proxy work** of any kind (the brief says avoid the arms race).
+- **No reliance on a multi-query/batch endpoint** — I checked whether Firecrawl
+  could take all the probes in one request and return a fused ranking (it would
+  simplify the transport). It can't: the OpenAPI spec types `query` as a single
+  string (`maxLength 500`); there is no query array or batch-search call. So
+  concurrent one-query-per-probe is the transport, and the cross-query fusion +
+  dedup + coverage — the actual hard part — is ours regardless. (Verified against
+  the spec, not assumed.)
 
 ---
 
@@ -143,24 +191,32 @@ analyst than a longer list that quietly hides the same gap.
 
 ## One thing an AI tool got wrong (and how I caught it)
 
-Building the Firecrawl client, the AI assistant (me, on autopilot) reached for
-the SDK it "remembered": `@mendable/firecrawl-js@^1.29.1`, with a `search()` that
-returns a flat `{ data: [...] }`. I pinned it and moved on.
+**The ranking fusion.** Asked to combine relevance signals, the AI assistant
+implemented `relevance = 0.65·normalize(RRF) + 0.35·normalize(BM25)` — normalize
+two scores to [0,1] and blend them with hand-picked weights. It looked
+reasonable and the tests passed. It is, on inspection, exactly the anti-pattern
+**Reciprocal Rank Fusion exists to avoid**: averaging scores from systems whose
+scales are incomparable, with magic constants nobody can defend. **The reviewer
+caught it** and made two corrections the AI had missed: (1) BM25 *is itself a
+ranking*, so it should not be score-blended at all — it should join the RRF
+fusion as **one more ranked list**, since RRF needs only ranks; and (2) the one
+remaining parameter (how much the BM25 list counts) must be **chosen by
+evaluation, not guessed**. The fix folded BM25 into a single RRF over (probe
+lists + BM25 list), deleted the `0.65/0.35` constants entirely, and added
+`npm run eval:rank` (nDCG@10 with an LLM judge) to set the weight from data —
+which in turn surfaced the honest finding that relevance re-ranking is
+low-leverage on an already-topical pool. A reminder that an AI will happily
+produce *plausible* ML code that violates the method; catching it took knowing
+*why* RRF is used, not just *that* it is.
 
-I caught it by **refusing to trust the memory** and verifying against ground
-truth: `npm view` showed the current package is `firecrawl@4.28.3`, and reading
-the *installed* `dist/index.d.ts` showed a different shape entirely —
-`new Firecrawl({apiKey}).search(query, opts)` returning `{ web?, news?, images? }`,
-where **web results carry `description` and news results carry `snippet`** (two
-different field names). Had I trusted the assumption, `normalizeResults` would
-have read the wrong field and silently emitted blank snippets on every web result
-— a bug that *passes every test* and only shows up as degraded output in
-production. The fix was to read the types, not recall them. (A smaller self-catch:
-my first URL-canonicalization pass had a convoluted, wrong trailing-slash regex;
-I caught it on read-back and replaced it with three honest lines.)
-
-**Lesson encoded in the repo:** the SDK contract is pinned by a real version and
-covered by `normalizeResults` tests asserting the exact field mapping.
+A second, smaller one (AI-self-caught): the Firecrawl client first pinned the
+SDK the model "remembered," `@mendable/firecrawl-js@^1.29.1`. Verifying against
+ground truth instead — `npm view` and the *installed* `dist/index.d.ts` — showed
+the current package is `firecrawl@4.28.3` with a different shape, where **web
+results carry `description` and news results carry `snippet`**. Trusting the
+memory would have made `normalizeResults` read the wrong field and silently emit
+blank snippets — a bug that passes every test. Fixed by reading the types, and
+locked in by `normalizeResults` tests asserting the exact field mapping.
 
 ---
 
@@ -210,12 +266,17 @@ npm run widen -- list                                      # browse past runs
 # 3. the dashboard (reads the same runs/ folder; can run searches ad hoc)
 npm run web                 # http://localhost:3939
 
-# 4. the verifiable claim: baseline limit=50 vs the fan-out
-npm run eval
+# 4. the verifiable claims
+npm run eval         # completeness: baseline limit=50 vs the fan-out (net-new domains)
+npm run eval:rank    # ranking: nDCG@10 across strategies (LLM judge); picks the BM25 weight
 
 # tests / typecheck
 npm test && npm run typecheck
 ```
+
+`--diversity <0..1>` (default 0.45) is the one ranking knob exposed to users; the
+relevance fusion (RRF + BM25 weight) is internal and set by `eval:rank`, so the
+customer gets a sensible default, not a pile of switches.
 
 Optional LLM-enhanced expansion: `npm run widen -- search "…" --llm` (defaults to
 local Ollama at `localhost:11434`; set `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`

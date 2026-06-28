@@ -7,6 +7,8 @@ export * from './merge.js';
 export * from './text.js';
 export * from './bm25.js';
 export * from './rank.js';
+export * from './metrics.js';
+export * from './judge.js';
 export * from './coverage.js';
 export * from './run.js';
 export * from './store.js';

@@ -78,7 +78,7 @@ async function evalTopic(
 
 async function main() {
   const args = process.argv.slice(2);
-  const topicsFile = args.find((a) => !a.startsWith('--'));
+  const topicsFile = args[0] && !args[0].startsWith('--') ? args[0] : undefined;
   const baselineLimit = Number(flag(args, '--baseline-limit') ?? 50);
   const budget = Number(flag(args, '--budget') ?? 24);
 

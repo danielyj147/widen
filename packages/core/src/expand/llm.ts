@@ -20,13 +20,28 @@ function userPrompt(query: string): string {
   return `Topic: "${query}"\nReturn the JSON array of sub-queries now.`;
 }
 
-/** Provider-agnostic call returning raw model text. Throws on transport/HTTP errors. */
-async function complete(env: LlmEnv, query: string, signal: AbortSignal): Promise<string> {
-  if (env.provider === 'anthropic') return completeAnthropic(env, query, signal);
-  return completeOllama(env, query, signal);
+/**
+ * Provider-agnostic chat completion returning raw model text. Throws on
+ * transport/HTTP errors. Shared by probe expansion and the relevance judge.
+ */
+export async function llmChat(
+  env: LlmEnv,
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  opts: { temperature?: number; maxTokens?: number } = {},
+): Promise<string> {
+  if (env.provider === 'anthropic') return chatAnthropic(env, system, user, signal, opts);
+  return chatOllama(env, system, user, signal, opts);
 }
 
-async function completeOllama(env: LlmEnv, query: string, signal: AbortSignal): Promise<string> {
+async function chatOllama(
+  env: LlmEnv,
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  opts: { temperature?: number },
+): Promise<string> {
   // Ollama's OpenAI-compatible endpoint. One env flip swaps to any OpenAI-shaped API.
   const res = await fetch(`${env.baseUrl.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
@@ -35,10 +50,10 @@ async function completeOllama(env: LlmEnv, query: string, signal: AbortSignal): 
     body: JSON.stringify({
       model: env.model,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt(query) },
+        { role: 'system', content: system },
+        { role: 'user', content: user },
       ],
-      temperature: 0.7,
+      temperature: opts.temperature ?? 0.7,
       stream: false,
     }),
   });
@@ -47,7 +62,13 @@ async function completeOllama(env: LlmEnv, query: string, signal: AbortSignal): 
   return json?.choices?.[0]?.message?.content ?? '';
 }
 
-async function completeAnthropic(env: LlmEnv, query: string, signal: AbortSignal): Promise<string> {
+async function chatAnthropic(
+  env: LlmEnv,
+  system: string,
+  user: string,
+  signal: AbortSignal,
+  opts: { maxTokens?: number },
+): Promise<string> {
   if (!env.apiKey) throw new Error('ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic');
   const res = await fetch(`${env.baseUrl.replace(/\/$/, '')}/v1/messages`, {
     method: 'POST',
@@ -59,9 +80,9 @@ async function completeAnthropic(env: LlmEnv, query: string, signal: AbortSignal
     signal,
     body: JSON.stringify({
       model: env.model,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt(query) }],
+      max_tokens: opts.maxTokens ?? 1024,
+      system,
+      messages: [{ role: 'user', content: user }],
     }),
   });
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text().catch(() => '')}`);
@@ -103,7 +124,7 @@ export async function llmProbes(
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const text = await complete(env, query, ac.signal);
+    const text = await llmChat(env, SYSTEM_PROMPT, userPrompt(query), ac.signal);
     const queries = parseQueries(text)
       .filter((s) => s.toLowerCase() !== query.toLowerCase())
       .slice(0, 12);

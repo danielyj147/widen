@@ -32,15 +32,17 @@ function Stat({
   value,
   label,
   info,
+  valueClass,
 }: {
   value: React.ReactNode;
   label: string;
   info?: React.ReactNode;
+  valueClass?: string;
 }) {
   return (
     <Card>
       <CardContent className="py-4">
-        <div className="text-2xl font-semibold tracking-tight">{value}</div>
+        <div className={cn('text-2xl font-semibold tracking-tight', valueClass)}>{value}</div>
         <div className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
           {label}
           {info && <InfoTip>{info}</InfoTip>}
@@ -103,7 +105,6 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="text-sm">{cov.verdictReason}</p>
           <p className="text-muted-foreground text-xs">
             {new Date(run.createdAt).toLocaleString()} · {stopReasonText(cov.stopReason)} · ~
             {run.estimatedCredits} credits
@@ -139,6 +140,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         />
         <Stat
           value={pct(recap.coverage)}
+          valueClass={coverageColor(recap.coverage)}
           label="coverage"
           info={
             <>
@@ -315,6 +317,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       </Card>
     </div>
   );
+}
+
+/** Color the coverage figure by how complete it is — green/amber/red at a glance. */
+function coverageColor(cov: number | null): string {
+  if (cov == null) return '';
+  if (cov >= 0.8) return 'text-emerald-400';
+  if (cov >= 0.5) return 'text-amber-400';
+  return 'text-rose-400';
 }
 
 /** Plain-English name for each kind of search. */

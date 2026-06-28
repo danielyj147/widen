@@ -22,6 +22,7 @@ export const DEFAULT_CONFIG: RunConfig = {
   llm: false,
   rerank: true,
   diversity: 0.45,
+  minRelevance: 0,
   saturationMinNewDomains: 2,
   saturationPatience: 2,
   axes: ALL_AXES,
@@ -44,6 +45,24 @@ export function readLlmEnv(env: NodeJS.ProcessEnv = process.env): LlmEnv {
   const baseUrl =
     env.LLM_BASE_URL ??
     (provider === 'anthropic' ? 'https://api.anthropic.com' : 'http://localhost:11434');
-  const model = env.LLM_MODEL ?? (provider === 'anthropic' ? 'claude-sonnet-4-6' : 'llama3.2:3b');
+  const model = env.LLM_MODEL ?? (provider === 'anthropic' ? 'claude-opus-4-8' : 'llama3.2:3b');
   return { provider, baseUrl, model, apiKey: env.ANTHROPIC_API_KEY };
+}
+
+/**
+ * Env for the offline relevance judge (eval only). The judge needs a *capable*
+ * model, so it prefers Anthropic Claude when an ANTHROPIC_API_KEY is present
+ * (default claude-opus-4-8, override with JUDGE_MODEL), and only falls back to
+ * the local LLM otherwise. Never used on the serving path.
+ */
+export function readJudgeEnv(env: NodeJS.ProcessEnv = process.env): LlmEnv {
+  if (env.ANTHROPIC_API_KEY) {
+    return {
+      provider: 'anthropic',
+      baseUrl: env.LLM_BASE_URL ?? 'https://api.anthropic.com',
+      model: env.JUDGE_MODEL ?? 'claude-opus-4-8',
+      apiKey: env.ANTHROPIC_API_KEY,
+    };
+  }
+  return readLlmEnv(env);
 }

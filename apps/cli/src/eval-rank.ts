@@ -21,6 +21,7 @@ import {
   FirecrawlSearchClient,
   judgeRelevance,
   ndcgAt,
+  readJudgeEnv,
   readLlmEnv,
   RRF_K,
   run,
@@ -81,7 +82,9 @@ async function main() {
 
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) return die('FIRECRAWL_API_KEY is not set.');
-  const env = readLlmEnv();
+  // The judge needs a capable model — prefer Anthropic Claude (readJudgeEnv).
+  const judgeEnv = readJudgeEnv();
+  const expandEnv = readLlmEnv();
 
   const topics = topicsFile
     ? (await readFile(resolve(process.cwd(), topicsFile), 'utf8')).split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
@@ -91,11 +94,11 @@ async function main() {
   const strats = strategies();
   const perStrategy = new Map<string, number[]>(strats.map((s) => [s.name, []]));
 
-  console.error(c.bold(`ranking eval: ${topics.length} topics · judge ${env.provider}:${env.model} · nDCG@10\n`));
+  console.error(c.bold(`ranking eval: ${topics.length} topics · judge ${judgeEnv.provider}:${judgeEnv.model} · nDCG@10\n`));
 
   for (const topic of topics) {
     process.stderr.write(c.dim(`  ${topic} — fetching… `));
-    const artifact = await run(topic, { client, config: { budget, rerank: false }, llmEnv: env });
+    const artifact = await run(topic, { client, config: { budget, rerank: false }, llmEnv: expandEnv });
     const sources = artifact.sources;
     if (sources.length === 0) {
       console.error(c.yellow('no results, skipped'));
@@ -115,7 +118,7 @@ async function main() {
     process.stderr.write(c.dim(`judging ${pooled.length} results… `));
     const grades = new Map<string, number>();
     await mapPool(pooled, 4, async (src) => {
-      const g = await judgeRelevance(topic, src.title, src.snippet, env, 90_000);
+      const g = await judgeRelevance(topic, src.title, src.snippet, judgeEnv, 90_000);
       if (g != null) grades.set(src.url, g);
     });
     if (grades.size === 0) {
@@ -157,7 +160,7 @@ async function main() {
   }
 
   const outPath = resolve(process.cwd(), 'runs', `eval-rank-${Date.now()}.json`);
-  await writeFile(outPath, JSON.stringify({ judge: `${env.provider}:${env.model}`, topics, rows }, null, 2), 'utf8');
+  await writeFile(outPath, JSON.stringify({ judge: `${judgeEnv.provider}:${judgeEnv.model}`, topics, rows }, null, 2), 'utf8');
   console.error(c.dim(`\nwrote ${outPath}`));
 }
 

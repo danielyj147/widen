@@ -104,10 +104,17 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
   }
 
   const merged = mergeResults(executed);
-  // Coverage is order-independent; ordering is presentation. Default: relevance
-  // (RRF + BM25) diversified by MMR. --no-rerank keeps discovery order.
-  const sources = orderSources(merged, query, { rerank: cfg.rerank, diversity: cfg.diversity });
-  const coverage = buildCoverage(executedProbes, executed, sources, cfg, stopReason);
+  // Coverage reflects everything DISCOVERED — compute it on the full merged set,
+  // before ranking/filtering, so a minRelevance filter never inflates the
+  // completeness story.
+  const coverage = buildCoverage(executedProbes, executed, merged, cfg, stopReason);
+  // Ordering + minRelevance are presentation: relevance (RRF + BM25) diversified
+  // by MMR, then sub-threshold sources dropped from the displayed list.
+  const sources = orderSources(merged, query, {
+    rerank: cfg.rerank,
+    diversity: cfg.diversity,
+    minRelevance: cfg.minRelevance,
+  });
   const finishedAt = now();
 
   return {

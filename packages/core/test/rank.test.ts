@@ -72,24 +72,29 @@ describe('scoreRelevance (RRF fuses probe lists + BM25 list)', () => {
   });
 });
 
-describe('mmrOrder', () => {
+describe('mmrOrder (cosine tf-idf similarity)', () => {
+  // a1 and a2 are near-duplicate CONTENT; c is unrelated content.
   const sources = [
-    src({ url: 'https://a.com/1', domain: 'a.com', title: 'x', rrfScore: 1.0 }),
-    src({ url: 'https://a.com/2', domain: 'a.com', title: 'x', rrfScore: 0.9 }),
-    src({ url: 'https://b.com', domain: 'b.com', title: 'y', rrfScore: 0.5 }),
+    src({ url: 'https://a.com/1', title: 'solid state battery technology overview', rrfScore: 1.0 }),
+    src({ url: 'https://a.com/2', title: 'solid state battery technology overview guide', rrfScore: 0.9 }),
+    src({ url: 'https://c.com', title: 'spring gardening tips for beginners', rrfScore: 0.5 }),
   ];
   const rel = [1.0, 0.9, 0.5];
 
-  it('diversity 0 = pure relevance order (two same-domain first)', () => {
+  it('diversity 0 = pure relevance order', () => {
     const ordered = mmrOrder(sources, rel, 0);
-    expect(ordered.map((s) => s.url)).toEqual(['https://a.com/1', 'https://a.com/2', 'https://b.com']);
+    expect(ordered.map((s) => s.url)).toEqual([
+      'https://a.com/1',
+      'https://a.com/2',
+      'https://c.com',
+    ]);
   });
 
-  it('high diversity promotes a different domain over a same-domain duplicate', () => {
+  it('high diversity promotes dissimilar content over a near-duplicate', () => {
     const ordered = mmrOrder(sources, rel, 1);
-    // top relevance still first; then the different domain beats the a.com twin
+    // top relevance still first; then the dissimilar doc beats the near-duplicate
     expect(ordered[0]!.url).toBe('https://a.com/1');
-    expect(ordered[1]!.domain).toBe('b.com');
+    expect(ordered[1]!.url).toBe('https://c.com');
   });
 });
 
@@ -112,5 +117,18 @@ describe('orderSources', () => {
     ];
     const out = orderSources(sources, 'battery suppliers', { rerank: true, diversity: 0.45 });
     expect(out[0]!.url).toBe('https://a.com');
+  });
+
+  it('drops sources below minRelevance from the displayed list', () => {
+    const sources = [
+      src({ url: 'https://a.com', title: 'battery suppliers list', rrfScore: 0.9 }),
+      src({ url: 'https://b.com', title: 'unrelated cooking recipes', rrfScore: 0.1 }),
+    ];
+    const out = orderSources(sources, 'battery suppliers', {
+      rerank: true,
+      diversity: 0.45,
+      minRelevance: 0.5,
+    });
+    expect(out.map((s) => s.domain)).toEqual(['a.com']); // b.com (relevance 0) dropped
   });
 });

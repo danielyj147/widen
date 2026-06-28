@@ -34,6 +34,7 @@ ${c.bold('OPTIONS')}
   --axes <list>       comma list of: ${ALL_AXES.join(',')}
   --llm               use LLM-enhanced expansion (reads LLM_* env; off by default)
   --diversity <0..1>  MMR diversity: 0 = pure relevance, 1 = max source spread  (default 0.45)
+  --min-relevance <0..1>  drop sub-threshold sources from the result list  (default 0)
   --no-rerank         keep discovery order (skip relevance ranking + diversity)
   --out <dir>         where run artifacts live        (default ./runs)
   --no-save           don't write an artifact
@@ -73,6 +74,7 @@ function parse(argv: string[]): CliOpts {
       limit: { type: 'string' },
       location: { type: 'string' },
       diversity: { type: 'string' },
+      'min-relevance': { type: 'string' },
       axes: { type: 'string' },
       out: { type: 'string' },
       llm: { type: 'boolean' },
@@ -95,6 +97,8 @@ function configFrom(values: CliOpts['values']): Partial<RunConfig> {
   if (values.llm) cfg.llm = true;
   if (values['no-rerank']) cfg.rerank = false;
   if (values.diversity != null) cfg.diversity = unit('--diversity', values.diversity as string);
+  if (values['min-relevance'] != null)
+    cfg.minRelevance = unit('--min-relevance', values['min-relevance'] as string);
   if (values.axes) {
     const axes = (values.axes as string).split(',').map((a) => a.trim()) as ProbeAxis[];
     const bad = axes.filter((a) => !ALL_AXES.includes(a));

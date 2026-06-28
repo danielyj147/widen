@@ -5,6 +5,7 @@ export * from './expand/index.js';
 export * from './firecrawl.js';
 export * from './merge.js';
 export * from './text.js';
+export * from './tfidf.js';
 export * from './bm25.js';
 export * from './rank.js';
 export * from './metrics.js';

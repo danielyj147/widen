@@ -143,6 +143,8 @@ export interface RunConfig {
   rerank: boolean;
   /** MMR diversity in [0,1]: 0 = pure relevance, 1 = max source spread. */
   diversity: number;
+  /** drop displayed sources whose normalized relevance is below this (0 = keep all). */
+  minRelevance: number;
   /** adaptive stop: min new domains a wave must add to keep going. */
   saturationMinNewDomains: number;
   /** adaptive stop: consecutive low-yield waves tolerated before stopping. */

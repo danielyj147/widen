@@ -37,7 +37,7 @@ export function renderArtifact(a: RunArtifact): string {
   L.push(
     `  ranked by    ${c.dim(
       a.config.rerank
-        ? `relevance (RRF rank-fusion) · MMR diversity ${a.config.diversity}`
+        ? `relevance (RRF + BM25) · MMR diversity ${a.config.diversity}`
         : 'discovery order (--no-rerank)',
     )}`,
   );

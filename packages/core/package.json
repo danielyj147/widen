@@ -8,6 +8,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0",
     "firecrawl": "^4.28.3"
   }
 }

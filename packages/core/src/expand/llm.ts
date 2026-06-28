@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import type { LlmEnv } from '../config.js';
 import type { Probe, ProbeParams, RunConfig } from '../types.js';
 import { probeId } from './deterministic.js';
@@ -69,25 +70,22 @@ async function chatAnthropic(
   signal: AbortSignal,
   opts: { maxTokens?: number },
 ): Promise<string> {
-  if (!env.apiKey) throw new Error('ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic');
-  const res = await fetch(`${env.baseUrl.replace(/\/$/, '')}/v1/messages`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': env.apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    signal,
-    body: JSON.stringify({
+  if (!env.apiKey) throw new Error('ANTHROPIC_API_KEY is required for the Anthropic provider');
+  // Official SDK (per the claude-api guidance — not raw HTTP). These are short,
+  // bounded judge/expansion calls, so thinking is disabled to keep them fast and
+  // the small max_tokens cap forces a terse answer.
+  const client = new Anthropic({ apiKey: env.apiKey, baseURL: env.baseUrl });
+  const msg = await client.messages.create(
+    {
       model: env.model,
       max_tokens: opts.maxTokens ?? 1024,
+      thinking: { type: 'disabled' },
       system,
       messages: [{ role: 'user', content: user }],
-    }),
-  });
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text().catch(() => '')}`);
-  const json: any = await res.json();
-  return (json?.content ?? []).map((b: any) => b?.text ?? '').join('');
+    },
+    { signal },
+  );
+  return msg.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
 }
 
 /**

@@ -1,4 +1,4 @@
-import { readLlmEnv, type LlmEnv } from './config.js';
+import { readJudgeEnv, type LlmEnv } from './config.js';
 import { llmChat } from './expand/llm.js';
 
 /**
@@ -35,7 +35,7 @@ export async function judgeRelevance(
   query: string,
   title: string,
   snippet: string,
-  env: LlmEnv = readLlmEnv(),
+  env: LlmEnv = readJudgeEnv(),
   timeoutMs = 20_000,
 ): Promise<number | null> {
   const ac = new AbortController();

@@ -10,7 +10,7 @@ Both pains share one root cause. **A single search returns a single ranking.** R
 
 ## Which problems I chose
 
-With about 20 hours and a brief that rewards depth over breadth, I picked along three lines. Serve the **highest-stakes** customer first (the enterprise renewal). Build only what **does not already exist** (for example, "give me 3 fast snippet results" is already `limit:3` with no scraping, a docs answer rather than a build). And keep it **general**, since one-off customizations bottleneck a scaling company. That points squarely at completeness (#1) and controllable ranking (#5), and they turn out to be one feature: **widen the net, then rank what you caught.** (Full triage of all 11 requests at the end.)
+With about 20 hours and a brief that rewards depth over breadth, I picked along three lines. Serve the **highest-stakes** customer first (the enterprise renewal). Build only what **does not already exist** (for example, "give me 3 fast snippet results" is already `limit:3` with no scraping, a docs answer rather than a build). And keep it **general**, since one-off customizations bottleneck a scaling company. That points squarely at completeness (#1) and controllable ranking (#5), and they turn out to be one feature: **widen the net, then rank what you caught.** (Full analysis of all 11 requests at the end.)
 
 ## How I solved it
 
@@ -49,14 +49,14 @@ rrf+bm25@1   0.741                         baseline   0.649  (Firecrawl's own or
 | **1** | Competitive intel (**enterprise, $180k, flat, renewal Q3**) | Search completeness | **Built.** Highest leverage (renewal plus 3-team expansion) and a genuinely missing layer. This repo. |
 | **5** | AI research startup (growth, $36k, ↑14%) | `intent` / rerank parameter | **Built.** Reranking with optional freshness and authority weights. |
 | 2 | Price comparison (growth, $42k, ↓8%) | BYO proxies | **Support.** Classic noisy-neighbor. Move them to a dedicated or new IP. |
-| 3 | OSS user (free) | `dedupe: true` markdown | **Deprioritize.** |
-| 4 | Indie dev (hobby, $348, ↑) | "3 results, snippets, fast" | **Already exists.** `/search` `limit:3`, no `scrapeOptions`. Worth a docs example (~4,100 similar accounts). |
-| 6 | Fortune 500 (prospect) | "Understand any website" | **Exists.** RAG over `/search` plus `/scrape` plus `/extract`. |
+| 3 | OSS user (free) | `dedupe: true` markdown | **Depriortize** there are higher priorities|
+| 4 | Indie dev (hobby, $348, ↑) | "3 results, snippets, fast" | **Exists.** `/search` `limit:3`, no `scrapeOptions`. Worth a docs example (~4,100 similar accounts). |
+| 6 | Fortune 500 (prospect) | "Understand any website" | **Exists.** RAG over `/search` plus `/scrape` plus `/extract` or `/interact`. |
 | 7 | Workflow automation (growth, $28k, ↑6%) | Which step failed | **Would build with more time.** A Vercel-deploy-status-style pipeline view that also addresses the 214 debugging tickets. |
-| 8 | Startup (growth, $31k, flat) | Tail latency | Real, but low stakes (tier plus a temporary workaround). Revisit if it propagates. |
+| 8 | Startup (growth, $31k, flat) | Tail latency | Real, but low stakes (tier + a temporary workaround). Investigate if it propagates. |
 | 9 | Data infra (growth, $38k, flat) | Self-maintaining extractors | Interesting and common, but tier plus scope. Deprioritize. |
 | 10 | Sales intel (**scale, $60k, ↑18%**) | LinkedIn at scale | **Reroute.** Anti-bot arms race. Headcount and jobs are better via ATS plus SEC filings ([doc](https://www.firecrawl.dev/blog/scrape-job-boards-firecrawl-openai)). |
-| 11 | AI agent startup (trial) | Authenticated multi-step sessions | Worth a reply, likely solvable with current offerings, not a priority build. |
+| 11 | AI agent startup (trial) | Authenticated multi-step sessions | Worth a reply, likely solvable with current offerings, probably not a build problem. |
 
 **Deliberately not built:** scrape plus per-result rerank (useful but out of scope), a database (BM25 runs in-process, though a BM25-capable DB would help at larger scale), and any anti-bot work.
 
@@ -66,12 +66,11 @@ rrf+bm25@1   0.741                         baseline   0.649  (Firecrawl's own or
 cp .env.example .env        # add FIRECRAWL_API_KEY, the only required input
 npm install
 
+npm run widen help
 npm run widen search "solid state battery suppliers"   # CLI, the primary surface
 npm run widen batch examples/queries.txt --budget 24   # overnight-job shape
 npm run studio                                          # Firecrawl Studio at localhost:3939
 ```
-
-`--diversity <0..1>` (default 0.45) is the one ranking knob exposed by default. The relevance fusion (RRF plus BM25 weight) is internal and set by `eval:rank`, so the customer gets a sensible default instead of a pile of switches. Optional `--llm` adds model-written reformulations (local Ollama by default, or Claude), strictly additive.
 
 ## Limitations
 

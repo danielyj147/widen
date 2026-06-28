@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { ExternalLink, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 import type { Probe, Verdict } from '@widen/core';
 import { getRun } from '@/lib/runs';
 import { cn } from '@/lib/utils';
@@ -273,13 +273,15 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          {/* table-fixed + truncation: keep long page titles from forcing the
+              table wider than the card (no horizontal scroll). */}
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-6" />
-                <TableHead>website</TableHead>
+                <TableHead className="w-44">website</TableHead>
                 <TableHead>page</TableHead>
-                <TableHead className="w-24">
+                <TableHead className="w-20">
                   <span className="inline-flex items-center gap-1">
                     match
                     <InfoTip>
@@ -288,8 +290,8 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                     </InfoTip>
                   </span>
                 </TableHead>
-                <TableHead className="w-28">found by</TableHead>
-                <TableHead className="w-16">type</TableHead>
+                <TableHead className="w-20">found by</TableHead>
+                <TableHead className="w-14">type</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -300,20 +302,20 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                       <Star className="size-3 fill-amber-400 text-amber-400" />
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{s.domain}</TableCell>
-                  <TableCell>
+                  <TableCell className="truncate font-mono text-xs">{s.domain}</TableCell>
+                  <TableCell className="truncate">
                     <a
                       href={s.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-primary inline-flex items-center gap-1 hover:underline"
+                      className="text-primary hover:underline"
+                      title={s.title || s.url}
                     >
-                      <span className="line-clamp-1">{s.title || s.url}</span>
-                      <ExternalLink className="size-3 flex-none opacity-60" />
+                      {s.title || s.url}
                     </a>
                   </TableCell>
                   <TableCell>
-                    <div className="bg-muted h-1.5 w-16 overflow-hidden rounded" title={`relevance ${s.relevance.toFixed(2)}`}>
+                    <div className="bg-muted h-1.5 w-12 overflow-hidden rounded" title={`relevance ${s.relevance.toFixed(2)}`}>
                       <div
                         className={cn('h-full rounded', relevanceColor(s.relevance))}
                         style={{ width: `${Math.max(4, s.relevance * 100)}%` }}
@@ -321,7 +323,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
-                    {s.foundByProbes.length} search{s.foundByProbes.length === 1 ? '' : 'es'}
+                    {s.foundByProbes.length}×
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="font-normal">{s.source}</Badge>

@@ -8,11 +8,7 @@ export default async function Home() {
   const keyPresent = hasApiKey();
   return (
     <div className="mx-auto mt-[8vh] max-w-2xl">
-      <h2 className="text-2xl font-semibold tracking-tight">Find every source, not just the popular ones</h2>
-      <p className="text-muted-foreground mt-1 text-sm">
-        One query runs as many searches — news, regions, forums, specific sites — then we combine them
-        and tell you how much you’re likely missing.
-      </p>
+      <h2 className="text-2xl font-semibold tracking-tight">Find the sources you’re missing</h2>
 
       {!keyPresent && (
         <p className="text-amber-500 border-amber-500/40 bg-amber-500/10 mt-5 flex items-start gap-2 rounded-md border px-3 py-2 text-sm">

@@ -69,10 +69,7 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
         />
         <SubmitButton />
       </div>
-      <p className="text-muted-foreground text-xs">
-        Wide fan-out + reranking are on by default. Runs synchronously (~10–30s), then redirects to
-        the report.
-      </p>
+      <p className="text-muted-foreground text-xs">Takes ~10–30s.</p>
 
       <Collapsible>
         <CollapsibleTrigger asChild>

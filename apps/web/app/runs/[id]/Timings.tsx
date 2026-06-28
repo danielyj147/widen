@@ -38,10 +38,14 @@ export function Timings({ t, calls }: { t: RunTimings; calls: ProbeCall[] }) {
   const maxCall = Math.max(1, ...calls.map((c) => c.ms));
 
   const phases: Array<{ label: string; ms: number; note?: string }> = [
-    { label: 'expand', ms: t.expandMs, note: 'query → probes' },
-    { label: 'fan-out', ms: t.fanoutMs, note: `network · probe p50 ${ms(t.probeMsP50)} / max ${ms(t.probeMsMax)}` },
-    { label: 'merge + dedup', ms: t.mergeMs },
-    { label: 'coverage', ms: t.coverageMs, note: 'Chao1 + saturation' },
+    { label: 'expand', ms: t.expandMs, note: 'build the search angles (local)' },
+    {
+      label: 'Firecrawl calls',
+      ms: t.fanoutMs,
+      note: `the /search network calls · p50 ${ms(t.probeMsP50)} / slowest ${ms(t.probeMsMax)}`,
+    },
+    { label: 'merge + dedup', ms: t.mergeMs, note: 'combine results, drop duplicates (local)' },
+    { label: 'coverage', ms: t.coverageMs, note: 'Chao1 estimate + saturation (local)' },
     { label: 'rank', ms: t.rankMs, note: 'RRF + BM25 + tf-idf MMR (local)' },
   ];
   const max = Math.max(1, ...phases.map((p) => p.ms));
@@ -64,18 +68,18 @@ export function Timings({ t, calls }: { t: RunTimings; calls: ProbeCall[] }) {
           <CardContent className="space-y-2 py-4">
             {phases.map((p) => (
               <div key={p.label} className="flex items-center gap-3 text-xs">
-                <span className="w-28 font-mono">{p.label}</span>
-                <div className="bg-muted h-2 flex-1 overflow-hidden rounded">
+                <span className="w-28 flex-none font-mono">{p.label}</span>
+                <div className="bg-muted h-2 w-40 flex-none overflow-hidden rounded">
                   <div className="bg-primary/70 h-full rounded" style={{ width: `${(p.ms / max) * 100}%` }} />
                 </div>
-                <span className="w-16 text-right font-mono">{ms(p.ms)}</span>
-                {p.note && <span className="text-muted-foreground hidden w-64 sm:block">{p.note}</span>}
+                <span className="w-16 flex-none text-right font-mono">{ms(p.ms)}</span>
+                <span className="text-muted-foreground hidden flex-1 truncate sm:block">{p.note ?? ''}</span>
               </div>
             ))}
             <p className="text-muted-foreground pt-1 text-[11px]">
-              Wall-clock per phase. tf-idf is classical IR over this run’s result set (no LLM, no
-              fixed context) — note how small the local <span className="font-mono">rank</span> step is
-              next to network fan-out.
+              Wall-clock per phase. The <span className="font-mono">Firecrawl calls</span> row is the
+              network time (the actual <span className="font-mono">/search</span> requests); everything
+              else runs locally in single-digit-to-tens of ms.
             </p>
 
             {/* per-Firecrawl-call timing — one /search call per probe */}

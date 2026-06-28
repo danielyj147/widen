@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { getRuns } from '@/lib/runs';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Sidebar } from './Sidebar';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
@@ -31,12 +32,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       className={cn('dark', geist.variable, geistMono.variable)}
     >
       <body suppressHydrationWarning className="font-sans antialiased">
-        <div className="flex min-h-screen">
-          <Sidebar runs={runs} />
-          <main className="min-w-0 flex-1">
-            <div className="mx-auto w-full max-w-4xl px-6 py-8 md:px-10">{children}</div>
-          </main>
-        </div>
+        <TooltipProvider delayDuration={150}>
+          <div className="flex min-h-screen">
+            <Sidebar runs={runs} />
+            <main className="min-w-0 flex-1">
+              <div className="mx-auto w-full max-w-4xl px-6 py-8 md:px-10">{children}</div>
+            </main>
+          </div>
+        </TooltipProvider>
       </body>
     </html>
   );

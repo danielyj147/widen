@@ -61,9 +61,9 @@ export function chao1(domainIncidence: number[]): RecaptureEstimate {
     coverage,
     method,
     caveat:
-      'Estimate assumes probes sample sources somewhat independently. A high ' +
-      'singleton count means many domains were found by only one probe — strong ' +
-      'evidence more remain unseen.',
+      'A statistical estimate (it assumes the different search angles find sites ' +
+      'somewhat independently). Many sites turning up in only one angle is strong ' +
+      'evidence that more remain unfound.',
   };
 }
 
@@ -123,7 +123,7 @@ function decideVerdict(
   if (cov != null && cov >= 0.8 && tailFlat) {
     return {
       verdict: 'saturated',
-      reason: `Last ${tail.length} probes added few new domains and the recapture estimate puts coverage at ~${pct(cov)}. Further probing is unlikely to surface much.`,
+      reason: `The last ${tail.length} searches barely turned up new sites, and we estimate this run found about ${pct(cov)} of the sites worth finding. More searching is unlikely to surface much.`,
     };
   }
   if ((cov != null && cov < 0.5) || !tailFlat) {
@@ -131,13 +131,13 @@ function decideVerdict(
       verdict: 'thin',
       reason:
         cov != null && cov < 0.5
-          ? `The recapture estimate suggests only ~${pct(cov)} of discoverable domains were found (${recapture.singletons} of ${recapture.observedDomains} domains came from a single probe). Coverage is likely incomplete.`
-          : 'New domains were still appearing in the final probes — the search had not saturated when it stopped.',
+          ? `We estimate this run found only about ${pct(cov)} of the sites worth finding — ${recapture.singletons} of ${recapture.observedDomains} sites turned up in just one search angle, a sign many more exist. Coverage is likely incomplete.`
+          : 'New sites were still appearing in the final searches — coverage had not leveled off when the run stopped.',
     };
   }
   return {
     verdict: 'moderate',
-    reason: `Coverage estimate ~${cov != null ? pct(cov) : 'n/a'}; the curve is flattening but some long-tail sources may remain.`,
+    reason: `We estimate about ${cov != null ? pct(cov) : 'n/a'} coverage of the sites worth finding: results are leveling off, but some long-tail sources may remain.`,
   };
 }
 

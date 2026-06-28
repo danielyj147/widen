@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ExternalLink, Star } from 'lucide-react';
+import { ExternalLink, Star } from 'lucide-react';
 import type { Probe, Verdict } from '@widen/core';
 import { getRun } from '@/lib/runs';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table';
 import { SaturationChart } from './SaturationChart';
 import { Timings, type ProbeCall } from './Timings';
+import { InfoTip } from '../../InfoTip';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,14 +28,45 @@ const verdictClass: Record<Verdict, string> = {
   thin: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
 };
 
-function Stat({ value, label }: { value: React.ReactNode; label: string }) {
+function Stat({
+  value,
+  label,
+  sub,
+  info,
+}: {
+  value: React.ReactNode;
+  label: string;
+  sub?: string;
+  info?: React.ReactNode;
+}) {
   return (
     <Card>
       <CardContent className="py-4">
         <div className="text-2xl font-semibold tracking-tight">{value}</div>
-        <div className="text-muted-foreground mt-0.5 text-xs">{label}</div>
+        <div className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
+          {label}
+          {info && <InfoTip>{info}</InfoTip>}
+        </div>
+        {sub && <div className="text-muted-foreground/70 text-[11px]">{sub}</div>}
       </CardContent>
     </Card>
+  );
+}
+
+function LegendSwatch({ kind }: { kind: 'line' | 'bar' | 'dashed' }) {
+  if (kind === 'bar') return <span className="bg-muted-foreground/30 inline-block h-3 w-3 rounded-[2px]" />;
+  return (
+    <svg width="20" height="8" className="inline-block align-middle">
+      <line
+        x1="0"
+        y1="4"
+        x2="20"
+        y2="4"
+        stroke={kind === 'dashed' ? 'var(--muted-foreground)' : 'var(--primary)'}
+        strokeWidth="2"
+        strokeDasharray={kind === 'dashed' ? '3 3' : undefined}
+      />
+    </svg>
   );
 }
 
@@ -63,10 +95,6 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="space-y-5">
-      <a href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm">
-        <ArrowLeft className="size-3.5" /> all runs
-      </a>
-
       {/* verdict banner */}
       <Card>
         <CardHeader>
@@ -80,11 +108,12 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         <CardContent className="space-y-2">
           <p className="text-sm">{cov.verdictReason}</p>
           <p className="text-muted-foreground text-xs">
-            {new Date(run.createdAt).toLocaleString()} · stopped on{' '}
-            <span className="font-mono">{cov.stopReason}</span> · ~{run.estimatedCredits} credits ·{' '}
+            {new Date(run.createdAt).toLocaleString()} · stopped because{' '}
+            <span className="font-mono">{stopReasonText(cov.stopReason)}</span> · ~
+            {run.estimatedCredits} credits ·{' '}
             {run.config.llm ? 'LLM-enhanced expansion' : 'deterministic expansion'} ·{' '}
             {run.config.rerank
-              ? `ranked: RRF + BM25, MMR diversity ${run.config.diversity ?? 0}`
+              ? `ranked by relevance + diversity (diversity ${run.config.diversity ?? 0})`
               : 'discovery order'}
             {run.config.maxAgeDays
               ? ` · ≤${run.config.maxAgeDays}d old`
@@ -101,9 +130,33 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
 
       {/* headline stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat value={cov.uniqueDomains} label="unique domains" />
-        <Stat value={cov.uniqueUrls} label="unique sources" />
-        <Stat value={pct(recap.coverage)} label="est. coverage (Chao1)" />
+        <Stat
+          value={cov.uniqueDomains}
+          label="sources"
+          sub="distinct websites"
+          info={
+            <>
+              A <b>source</b> is one website / publisher (e.g. <span className="font-mono">nytimes.com</span>).
+              Several pages from the same site count once. This is what the customer means by “sources we
+              miss”.
+            </>
+          }
+        />
+        <Stat value={cov.uniqueUrls} label="pages" sub="distinct result URLs" />
+        <Stat
+          value={pct(recap.coverage)}
+          label="est. coverage"
+          sub="of findable sources"
+          info={
+            <>
+              A statistical estimate (<b>capture–recapture / Chao1</b>) of what share of the
+              <em> findable</em> sources this run actually found. We infer the total from how often sites
+              repeat across search angles: if many sites show up in only one angle, many more likely exist.
+              It’s an estimate, not a guarantee — {recap.singletons} of {recap.observedDomains} sources came
+              from a single angle here.
+            </>
+          }
+        />
         <Stat
           value={
             <>
@@ -111,43 +164,73 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
               <span className="text-muted-foreground text-sm">/{cov.probesIssued}</span>
             </>
           }
-          label={`probes ok${cov.probesFailed > 0 ? ` · ${cov.probesFailed} failed` : ''}`}
+          label="searches ok"
+          sub={cov.probesFailed > 0 ? `${cov.probesFailed} failed` : 'all succeeded'}
+          info={
+            <>
+              Each <b>search</b> is one Firecrawl <span className="font-mono">/search</span> call from a
+              specific angle — a reformulation, a region, a source type, a niche site, etc. widen fans out
+              many of them and merges the results. “ok” = the call returned results;
+              the rest failed, timed out, were rate-limited, or came back empty.
+            </>
+          }
         />
       </div>
 
       {/* saturation */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Saturation</CardTitle>
+          <CardTitle className="flex items-center gap-1.5 text-sm">
+            Are we still finding new sources?
+            <InfoTip>
+              As each search runs, we track how many <b>new</b> sources it adds. A line that keeps climbing
+              means there’s more to find; a flat tail means the search has saturated.
+            </InfoTip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <SaturationChart curve={cov.saturationCurve} estimatedTotal={recap.estimatedTotalDomains} />
-          <p className="text-muted-foreground mt-2 text-xs">
-            Line = cumulative domains found. Bars = new domains each probe added. Dashed = Chao1 estimate
-            of total discoverable domains ({recap.singletons} found by a single probe, {recap.doubletons} by
-            two). {recap.caveat}
-          </p>
+          <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+            <span className="flex items-center gap-1.5">
+              <LegendSwatch kind="line" /> cumulative sources found (running total)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <LegendSwatch kind="bar" /> new sources each search added
+            </span>
+            <span className="flex items-center gap-1.5">
+              <LegendSwatch kind="dashed" /> estimated total findable (~{recap.estimatedTotalDomains})
+            </span>
+          </div>
+          <p className="text-muted-foreground/80 mt-2 text-[11px]">{recap.caveat}</p>
         </CardContent>
       </Card>
 
       {/* where coverage came from */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Where coverage came from</CardTitle>
+          <CardTitle className="flex items-center gap-1.5 text-sm">
+            Which search angles found sources
+            <InfoTip>
+              Distinct sources contributed by each kind of search. Shows where the long tail actually came
+              from — e.g. regional or niche angles, not the base query.
+            </InfoTip>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {axisEntries.map(([axis, nDomains]) => (
+          {axisEntries.map(([axis, nSources]) => (
             <div key={axis} className="flex items-center gap-3 text-sm">
-              <span className="w-32 font-mono text-xs">{axis}</span>
+              <span className="w-32 flex-none font-mono text-xs">{axisLabel(axis)}</span>
               <div className="bg-muted h-2 flex-1 overflow-hidden rounded">
-                <div className="bg-primary h-full rounded" style={{ width: `${(nDomains / maxAxis) * 100}%` }} />
+                <div className="bg-primary h-full rounded" style={{ width: `${(nSources / maxAxis) * 100}%` }} />
               </div>
-              <span className="text-muted-foreground w-20 text-right font-mono text-xs">{nDomains} dom.</span>
+              <span className="text-muted-foreground w-24 flex-none text-right font-mono text-xs">
+                {nSources} sources
+              </span>
             </div>
           ))}
           <Separator className="my-1" />
           <p className="text-muted-foreground text-xs">
-            Top-5 domains hold {pct(cov.diversity.top5DomainShare)} of sources ·{' '}
+            Top 5 sites hold {pct(cov.diversity.top5DomainShare)} of all results ·{' '}
             {Object.entries(cov.diversity.bySource).map(([s, c]) => `${c} ${s}`).join(' · ')}
           </p>
         </CardContent>
@@ -157,14 +240,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       {cov.failures.length > 0 && (
         <Card className="border-amber-500/30">
           <CardHeader>
-            <CardTitle className="text-sm text-amber-400">Failed probes ({cov.failures.length})</CardTitle>
+            <CardTitle className="text-sm text-amber-400">Failed searches ({cov.failures.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>status</TableHead>
-                  <TableHead>probe</TableHead>
+                  <TableHead>search</TableHead>
                   <TableHead>error</TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,14 +269,16 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         </Card>
       )}
 
-      {/* sources */}
+      {/* results */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">
-            Sources ({run.sources.length}){' '}
-            <span className="text-muted-foreground inline-flex items-center gap-1 text-xs font-normal">
-              <Star className="size-3 fill-amber-400 text-amber-400" /> found by only one probe (long-tail)
-            </span>
+          <CardTitle className="flex items-center gap-1.5 text-sm">
+            Results ({run.sources.length} pages)
+            <InfoTip>
+              Every distinct page found, deduped across all searches and ordered by relevance + diversity. A
+              <Star className="mx-1 inline size-3 fill-amber-400 text-amber-400" /> marks a page found by only
+              one search angle — usually the long-tail sources that a single search misses.
+            </InfoTip>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -201,9 +286,9 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             <TableHeader>
               <TableRow>
                 <TableHead className="w-6" />
-                <TableHead>domain</TableHead>
-                <TableHead>title</TableHead>
-                <TableHead className="w-40">found by</TableHead>
+                <TableHead>site</TableHead>
+                <TableHead>page</TableHead>
+                <TableHead className="w-44">found by</TableHead>
                 <TableHead className="w-16">type</TableHead>
               </TableRow>
             </TableHeader>
@@ -232,8 +317,8 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                       </a>
                     </TableCell>
                     <TableCell className="text-xs">
-                      {s.foundByProbes.length}
-                      <span className="text-muted-foreground"> · {axes.join(', ')}</span>
+                      {s.foundByProbes.length} search{s.foundByProbes.length === 1 ? '' : 'es'}
+                      <span className="text-muted-foreground"> · {axes.map((a) => axisLabel(String(a))).join(', ')}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="font-normal">{s.source}</Badge>
@@ -247,4 +332,25 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       </Card>
     </div>
   );
+}
+
+function axisLabel(axis: string): string {
+  const map: Record<string, string> = {
+    base: 'base query',
+    reformulation: 'reformulation',
+    'source-type': 'source type',
+    time: 'time window',
+    region: 'region',
+    niche: 'niche domain',
+  };
+  return map[axis] ?? axis;
+}
+
+function stopReasonText(r: string): string {
+  const map: Record<string, string> = {
+    saturated: 'saturated (no new sources)',
+    'budget-exhausted': 'hit the probe budget',
+    'probes-exhausted': 'ran every search angle',
+  };
+  return map[r] ?? r;
 }

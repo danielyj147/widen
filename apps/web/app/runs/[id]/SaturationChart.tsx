@@ -37,21 +37,20 @@ export function SaturationChart({
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="saturation curve">
       <line x1={pad.l} x2={W - pad.r} y1={yCum(estimatedTotal)} y2={yCum(estimatedTotal)}
         stroke="var(--muted-foreground)" strokeDasharray="4 4" opacity={0.5} />
-      <text x={W - pad.r} y={yCum(estimatedTotal) - 4} fill="var(--muted-foreground)" fontSize="10"
-        textAnchor="end" opacity={0.85}>
-        est. discoverable ≈ {estimatedTotal}
-      </text>
       {curve.map((p, i) => (
         <rect key={i} x={x(i) - barW / 2} width={barW} y={pad.t + ih - yNew(p.newDomains)}
-          height={yNew(p.newDomains)} fill="var(--muted-foreground)" opacity={0.25} />
+          height={yNew(p.newDomains)} fill="var(--muted-foreground)" opacity={0.3} />
       ))}
       <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
       {curve.map((p, i) => (
         <circle key={i} cx={x(i)} cy={yCum(p.cumulativeDomains)} r={2.5} fill="var(--primary)" />
       ))}
-      <text x={pad.l} y={H - 8} fill="var(--muted-foreground)" fontSize="10">probe 1</text>
-      <text x={W - pad.r} y={H - 8} fill="var(--muted-foreground)" fontSize="10" textAnchor="end">probe {n}</text>
-      <text x={4} y={pad.t + 8} fill="var(--primary)" fontSize="10">domains</text>
+      <text x={pad.l} y={H - 8} fill="var(--muted-foreground)" fontSize="10">search 1</text>
+      <text x={(pad.l + W - pad.r) / 2} y={H - 8} fill="var(--muted-foreground)" fontSize="10" textAnchor="middle">
+        searches →
+      </text>
+      <text x={W - pad.r} y={H - 8} fill="var(--muted-foreground)" fontSize="10" textAnchor="end">search {n}</text>
+      <text x={4} y={pad.t + 8} fill="var(--primary)" fontSize="10">sources</text>
     </svg>
   );
 }

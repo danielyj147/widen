@@ -1,0 +1,7 @@
+# One query per line. Blank lines and #-comments are ignored.
+# Run with:  npm run widen -- batch examples/queries.txt --budget 24
+solid state battery suppliers
+enterprise data observability vendors
+regional craft cidery trends
+heat pump rebate programs by state
+industrial IoT predictive maintenance startups

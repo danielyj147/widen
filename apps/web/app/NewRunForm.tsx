@@ -18,23 +18,14 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const AXES = [
-  { key: 'base', label: 'plain search' },
-  { key: 'reformulation', label: 'reworded searches' },
-  { key: 'source-type', label: 'news / pdf / forums' },
-  { key: 'time', label: 'by date' },
-  { key: 'region', label: 'by region' },
-  { key: 'niche', label: 'specific sites' },
-];
-const SOURCES = [
-  { key: 'web', label: 'web' },
+// Web is always searched. These are extra verticals to pull in alongside it —
+// "news" is a Firecrawl source, the rest are categories. (Defaults checked
+// except code/GitHub.)
+const VERTICALS = [
   { key: 'news', label: 'news' },
-  { key: 'images', label: 'images' },
-];
-const CATEGORIES = [
-  { key: 'research', label: 'research' },
-  { key: 'pdf', label: 'pdf' },
-  { key: 'github', label: 'github' },
+  { key: 'research', label: 'research papers' },
+  { key: 'pdf', label: 'PDFs' },
+  { key: 'github', label: 'code (GitHub)', off: true },
 ];
 const TIMES = [
   { value: 'any', label: 'Any time' },
@@ -54,8 +45,8 @@ function SubmitButton() {
   );
 }
 
-function Field({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-2">{children}</div>;
+function Field({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={`space-y-2 ${className ?? ''}`}>{children}</div>;
 }
 
 export function NewRunForm({ disabled }: { disabled: boolean }) {
@@ -123,27 +114,17 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
             <p className="text-muted-foreground text-[11px]">precise freshness; overrides time range</p>
           </Field>
 
-          <Field>
-            <Label>Sources</Label>
-            <div className="flex flex-wrap gap-3">
-              {SOURCES.map((s) => (
-                <label key={s.key} className="flex items-center gap-2 text-sm">
-                  <Checkbox name={`source:${s.key}`} defaultChecked={s.key !== 'images'} disabled={disabled} />
-                  {s.label}
+          <Field className="sm:col-span-2">
+            <Label>Also search</Label>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {VERTICALS.map((v) => (
+                <label key={v.key} className="flex items-center gap-2 text-sm">
+                  <Checkbox name={`vertical:${v.key}`} defaultChecked={!v.off} disabled={disabled} />
+                  {v.label}
                 </label>
               ))}
             </div>
-          </Field>
-          <Field>
-            <Label>Categories</Label>
-            <div className="flex flex-wrap gap-3">
-              {CATEGORIES.map((c) => (
-                <label key={c.key} className="flex items-center gap-2 text-sm">
-                  <Checkbox name={`cat:${c.key}`} defaultChecked={c.key !== 'github'} disabled={disabled} />
-                  {c.label}
-                </label>
-              ))}
-            </div>
+            <p className="text-muted-foreground text-[11px]">Web is always searched; add these verticals too.</p>
           </Field>
 
           <Field>
@@ -187,17 +168,6 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
             <p className="text-muted-foreground text-[11px]">
               Searched directly — finds sites that don’t show up in normal results.
             </p>
-          </Field>
-          <Field>
-            <Label>Search types</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {AXES.map((a) => (
-                <label key={a.key} className="flex items-center gap-2 text-sm">
-                  <Checkbox name={`axis:${a.key}`} defaultChecked disabled={disabled} />
-                  {a.label}
-                </label>
-              ))}
-            </div>
           </Field>
 
           <div className="flex items-center gap-2">

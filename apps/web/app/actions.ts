@@ -1,7 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ALL_AXES, type ProbeAxis, type RunConfig } from '@widen/core';
+import { type RunConfig } from '@widen/core';
 import { createRun } from '@/lib/runs';
 
 export interface RunFormState {
@@ -27,15 +27,12 @@ export async function createRunAction(
   const location = String(formData.get('location') ?? '').trim();
   if (location) cfg.location = location;
 
-  // axes checkboxes (each named axis:<name>); fall back to all if none chosen.
-  const axes = ALL_AXES.filter((a) => formData.get(`axis:${a}`) === 'on');
-  cfg.axes = axes.length ? (axes as ProbeAxis[]) : ALL_AXES;
-
-  // sources / categories checkboxes
-  const sources = (['web', 'news', 'images'] as const).filter((s) => formData.get(`source:${s}`) === 'on');
-  if (sources.length) cfg.sources = [...sources];
-  const categories = (['research', 'pdf', 'github'] as const).filter((c) => formData.get(`cat:${c}`) === 'on');
-  cfg.categories = [...categories]; // allow empty (skip category probes)
+  // "Also search" verticals — web is always on; news is a source, the rest are
+  // categories. (Search-type axes are implicit — they self-gate on these fields.)
+  cfg.sources = formData.get('vertical:news') === 'on' ? ['web', 'news'] : ['web'];
+  cfg.categories = (['research', 'pdf', 'github'] as const).filter(
+    (c) => formData.get(`vertical:${c}`) === 'on',
+  );
 
   // regions (comma) and niche include-domains (comma or newline)
   const regions = splitList(String(formData.get('regions') ?? ''));

@@ -279,7 +279,16 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                 <TableHead className="w-6" />
                 <TableHead>website</TableHead>
                 <TableHead>page</TableHead>
-                <TableHead className="w-32">found by</TableHead>
+                <TableHead className="w-24">
+                  <span className="inline-flex items-center gap-1">
+                    match
+                    <InfoTip>
+                      How well the page matches your query, relative to the others in this run (green =
+                      strong, red = weak). Used to order the list.
+                    </InfoTip>
+                  </span>
+                </TableHead>
+                <TableHead className="w-28">found by</TableHead>
                 <TableHead className="w-16">type</TableHead>
               </TableRow>
             </TableHeader>
@@ -303,6 +312,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                       <ExternalLink className="size-3 flex-none opacity-60" />
                     </a>
                   </TableCell>
+                  <TableCell>
+                    <div className="bg-muted h-1.5 w-16 overflow-hidden rounded" title={`relevance ${s.relevance.toFixed(2)}`}>
+                      <div
+                        className={cn('h-full rounded', relevanceColor(s.relevance))}
+                        style={{ width: `${Math.max(4, s.relevance * 100)}%` }}
+                      />
+                    </div>
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {s.foundByProbes.length} search{s.foundByProbes.length === 1 ? '' : 'es'}
                   </TableCell>
@@ -325,6 +342,13 @@ function coverageColor(cov: number | null): string {
   if (cov >= 0.8) return 'text-emerald-400';
   if (cov >= 0.5) return 'text-amber-400';
   return 'text-rose-400';
+}
+
+/** Color a relevance score (0..1, relative to this run) green/amber/red. */
+function relevanceColor(r: number): string {
+  if (r >= 0.66) return 'bg-emerald-500';
+  if (r >= 0.33) return 'bg-amber-500';
+  return 'bg-rose-500';
 }
 
 /** Plain-English name for each kind of search. */

@@ -14,6 +14,8 @@ With about 20 hours and a brief that rewards depth over breadth, I picked along 
 
 ## How I solved it
 
+![Firecrawl Studio](./assets/firecrawl_studio.png)
+
 The whole idea in one sentence: instead of asking one ranking for *more*, ask the topic many *different* ways and combine the answers.
 
 **1. Coverage through query expansion and setting variation.** One query becomes roughly twenty searches, a "fan-out." Some keep the words but change the lens: the news vertical, research/PDF categories, time windows, and a region sweep (a different `location` per call, since results are localized). Others change the words themselves, reformulations like *"…criticism"* or operator queries like *"…forum"* (this is *query expansion*, rewording to reach different results). Each search surfaces a different slice of the index. For example, searching *off-grid solar batteries* and listing a couple of niche sites pulls in a DIY-solar forum and a regional power forum that the plain search buries on page five. Latency is irrelevant here (these run overnight), so casting many nets is free in the only currency that matters.

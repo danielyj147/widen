@@ -1,0 +1,17 @@
+# secrets
+.env
+.env.local
+
+# deps & build
+node_modules/
+dist/
+*.tsbuildinfo
+.next/
+out/
+
+# run artifacts (generated search runs; keep the dir via .gitkeep)
+runs/*.json
+!runs/.gitkeep
+
+# os / editor
+.DS_Store

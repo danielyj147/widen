@@ -1,0 +1,29 @@
+{
+  "name": "widen",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Recall-maximizing meta-search layer on Firecrawl /search — probe wide, merge, and report how complete a search actually was.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/cli",
+    "apps/web"
+  ],
+  "scripts": {
+    "widen": "node --env-file=.env --import tsx apps/cli/src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "eval": "node --env-file=.env --import tsx apps/cli/src/eval.ts",
+    "web": "npm run dev --workspace @widen/web"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "@types/node": "^22.10.2"
+  }
+}

@@ -15,3 +15,5 @@ runs/*.json
 
 # os / editor
 .DS_Store
+*.swp
+*~

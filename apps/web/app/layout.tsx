@@ -7,9 +7,13 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  // suppressHydrationWarning: color/theme browser extensions (e.g. Dark Reader)
+  // mutate the document before React hydrates, injecting attributes that can't
+  // match the server HTML. This is the documented use for it and does not mask
+  // real mismatches in our own markup.
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <div className="wrap">
           <header className="top">
             <h1>

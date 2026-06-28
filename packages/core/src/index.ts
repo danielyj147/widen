@@ -7,6 +7,7 @@ export * from './merge.js';
 export * from './text.js';
 export * from './tfidf.js';
 export * from './bm25.js';
+export * from './authority.js';
 export * from './rank.js';
 export * from './metrics.js';
 export * from './judge.js';

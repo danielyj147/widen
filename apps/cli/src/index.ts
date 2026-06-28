@@ -40,6 +40,8 @@ ${c.bold('OPTIONS')}
   --axes <list>       comma list of: ${ALL_AXES.join(',')}
   --llm               use LLM-enhanced expansion (reads LLM_* env; off by default)
   --diversity <0..1>  MMR diversity: 0 = pure relevance, 1 = max source spread  (default 0.45)
+  --freshness <0..1>  rerank weight for recency (news has dates)  (default 0)
+  --authority <0..1>  rerank weight for domain authority (Tranco)  (default 0)
   --min-relevance <0..1>  drop sub-threshold sources from the result list  (default 0)
   --no-rerank         keep discovery order (skip relevance ranking + diversity)
   --out <dir>         where run artifacts live        (default ./runs)
@@ -86,6 +88,8 @@ function parse(argv: string[]): CliOpts {
       'max-age': { type: 'string' },
       'include-domains': { type: 'string' },
       diversity: { type: 'string' },
+      freshness: { type: 'string' },
+      authority: { type: 'string' },
       'min-relevance': { type: 'string' },
       axes: { type: 'string' },
       out: { type: 'string' },
@@ -109,6 +113,8 @@ function configFrom(values: CliOpts['values']): Partial<RunConfig> {
   if (values.llm) cfg.llm = true;
   if (values['no-rerank']) cfg.rerank = false;
   if (values.diversity != null) cfg.diversity = unit('--diversity', values.diversity as string);
+  if (values.freshness != null) cfg.freshnessWeight = weight('--freshness', values.freshness as string);
+  if (values.authority != null) cfg.authorityWeight = weight('--authority', values.authority as string);
   if (values['min-relevance'] != null)
     cfg.minRelevance = unit('--min-relevance', values['min-relevance'] as string);
   if (values.sources) {
@@ -147,6 +153,13 @@ function int(flag: string, raw: string): number {
 function unit(flag: string, raw: string): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0 || n > 1) fail(`${flag} must be between 0 and 1, got "${raw}"`);
+  return n;
+}
+
+/** Non-negative weight (0 = off; can exceed 1 to dominate relevance). */
+function weight(flag: string, raw: string): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) fail(`${flag} must be a non-negative number, got "${raw}"`);
   return n;
 }
 

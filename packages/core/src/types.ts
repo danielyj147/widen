@@ -44,6 +44,8 @@ export interface RawResult {
   source: 'web' | 'news' | 'images';
   /** Rank within that probe's result list (1-based), if known. */
   position?: number;
+  /** publish date, when Firecrawl provides one (news results). */
+  date?: string;
 }
 
 export type ProbeStatus = 'ok' | 'empty' | 'timeout' | 'rate-limited' | 'error';
@@ -88,6 +90,12 @@ export interface MergedSource {
    * `relevance` when reranking is off.
    */
   rankScore: number;
+  /** publish date if known (news). */
+  date?: string;
+  /** freshness in [0,1] from the date (set by ranking; 0 until then). */
+  freshness: number;
+  /** Tranco authority in [0,1] (set by ranking when authorityWeight > 0). */
+  authority: number;
   source: 'web' | 'news' | 'images';
 }
 
@@ -151,6 +159,10 @@ export interface RunConfig {
   rerank: boolean;
   /** MMR diversity in [0,1]: 0 = pure relevance, 1 = max source spread. */
   diversity: number;
+  /** rerank weight for freshness (recency); 0 = ignore. */
+  freshnessWeight: number;
+  /** rerank weight for Tranco authority (popularity); 0 = ignore. */
+  authorityWeight: number;
   /** drop displayed sources whose normalized relevance is below this (0 = keep all). */
   minRelevance: number;
   /** adaptive stop: min new domains a wave must add to keep going. */

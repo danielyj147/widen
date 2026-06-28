@@ -1,3 +1,4 @@
+import { authorityScore } from './authority.js';
 import { bm25Scores } from './bm25.js';
 import { RRF_K } from './merge.js';
 import { normalize, tokenize } from './text.js';
@@ -23,10 +24,30 @@ export interface RankOptions {
   rerank: boolean;
   /** MMR diversity in [0,1]: 0 = pure relevance, 1 = max diversity. */
   diversity: number;
+  /** rerank weight for freshness (recency); 0 = ignore. */
+  freshnessWeight?: number;
+  /** rerank weight for Tranco authority (popularity); 0 = ignore. */
+  authorityWeight?: number;
   /** drop sources whose normalized relevance is below this (0 = keep all). */
   minRelevance?: number;
   /** override BM25 fusion weight (evaluation only). */
   bm25Weight?: number;
+  /** clock injection for deterministic freshness tests. */
+  now?: number;
+}
+
+/**
+ * Freshness in [0,1] from a publish date, with a 30-day half-life
+ * (today ≈ 1, 30d ≈ 0.5, 1yr ≈ 0.08). Undated results (most web pages — Firecrawl
+ * only dates news) get a neutral-low 0.3: unknown recency, neither boosted nor
+ * fully penalized.
+ */
+export function freshnessScore(date: string | undefined, now: number): number {
+  if (!date) return 0.3;
+  const t = Date.parse(date);
+  if (Number.isNaN(t)) return 0.3;
+  const ageDays = Math.max(0, (now - t) / 86_400_000);
+  return 1 / (1 + ageDays / 30);
 }
 
 /**
@@ -114,18 +135,31 @@ export function mmrOrder(sources: MergedSource[], relevance: number[], diversity
  */
 export function orderSources(sources: MergedSource[], query: string, opts: RankOptions): MergedSource[] {
   if (sources.length === 0) return sources;
-  scoreRelevance(sources, query, opts.bm25Weight);
+  scoreRelevance(sources, query, opts.bm25Weight); // sets s.relevance (RRF + BM25)
 
   const min = opts.minRelevance ?? 0;
   const kept = min > 0 ? sources.filter((s) => s.relevance >= min) : sources;
 
+  // Always annotate freshness/authority for transparency; authority lazily loads
+  // the Tranco list, so only compute it when it actually counts.
+  const now = opts.now ?? Date.now();
+  const fw = opts.freshnessWeight ?? 0;
+  const aw = opts.authorityWeight ?? 0;
+  for (const s of kept) {
+    s.freshness = freshnessScore(s.date, now);
+    s.authority = aw > 0 ? authorityScore(s.domain) : 0;
+  }
+
   if (!opts.rerank) {
-    // discovery order: no diversity step, so the rank score is just relevance.
+    // discovery order: no ranking step, so the rank score is just relevance.
     kept.forEach((s) => (s.rankScore = s.relevance));
     return kept;
   }
-  const relevance = kept.map((s) => s.relevance);
-  return mmrOrder(kept, relevance, opts.diversity);
+
+  // Blend the signals into the relevance MMR diversifies. Weights default 0, so
+  // the result is identical to relevance-only unless the user opts in.
+  const blended = normalize(kept.map((s) => s.relevance + fw * s.freshness + aw * s.authority));
+  return mmrOrder(kept, blended, opts.diversity);
 }
 
 function clamp01(x: number): number {

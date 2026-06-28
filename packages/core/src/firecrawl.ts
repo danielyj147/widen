@@ -72,7 +72,7 @@ export function normalizeResults(data: unknown): RawResult[] {
   });
   const news = Array.isArray(d.news) ? d.news : [];
   news.forEach((item, i) => {
-    const r = item as { url?: string; title?: string; snippet?: string; position?: number };
+    const r = item as { url?: string; title?: string; snippet?: string; position?: number; date?: string };
     if (!r?.url) return;
     out.push({
       url: r.url,
@@ -80,6 +80,7 @@ export function normalizeResults(data: unknown): RawResult[] {
       snippet: r.snippet ?? '',
       source: 'news',
       position: r.position ?? i + 1,
+      date: r.date,
     });
   });
   // Image results carry the containing page `url` — useful for source diversity.

@@ -38,9 +38,10 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
         if (r.position != null && r.position < existing.bestPosition) {
           existing.bestPosition = r.position;
         }
-        // keep the richest title/snippet we've seen
+        // keep the richest title/snippet/date we've seen
         if (!existing.title && r.title) existing.title = r.title;
         if (!existing.snippet && r.snippet) existing.snippet = r.snippet;
+        if (!existing.date && r.date) existing.date = r.date;
       } else {
         byUrl.set(url, {
           url,
@@ -53,6 +54,9 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
           bm25Score: 0, // set later by the ranking step
           relevance: 0,
           rankScore: 0,
+          date: r.date,
+          freshness: 0,
+          authority: 0,
           source: r.source,
         });
       }

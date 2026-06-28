@@ -118,6 +118,8 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
   const sources = orderSources(merged, query, {
     rerank: cfg.rerank,
     diversity: cfg.diversity,
+    freshnessWeight: cfg.freshnessWeight,
+    authorityWeight: cfg.authorityWeight,
     minRelevance: cfg.minRelevance,
   });
   const finishedAt = now();

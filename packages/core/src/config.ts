@@ -41,6 +41,8 @@ export const DEFAULT_CONFIG: RunConfig = {
   llm: false,
   rerank: true,
   diversity: 0.45,
+  freshnessWeight: 0,
+  authorityWeight: 0,
   minRelevance: 0,
   saturationMinNewDomains: 2,
   saturationPatience: 2,

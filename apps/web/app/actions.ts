@@ -20,6 +20,8 @@ export async function createRunAction(
     budget: clampInt(formData.get('budget'), 24, 1, 60),
     diversity: clampUnit(formData.get('diversity'), 0.45),
     minRelevance: clampUnit(formData.get('minRelevance'), 0),
+    freshnessWeight: clampWeight(formData.get('freshness')),
+    authorityWeight: clampWeight(formData.get('authority')),
     llm: formData.get('llm') === 'on',
     // rerank checkbox defaults checked; absent => opted out.
     rerank: formData.get('rerank') === 'on',
@@ -65,6 +67,12 @@ function clampUnit(v: FormDataEntryValue | null, def: number): number {
   const n = Number(v);
   if (!Number.isFinite(n)) return def;
   return Math.max(0, Math.min(1, n));
+}
+
+function clampWeight(v: FormDataEntryValue | null): number {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(5, n);
 }
 
 /** split a comma- or newline-separated list into trimmed, non-empty entries. */

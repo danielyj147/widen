@@ -115,6 +115,8 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             {run.config.includeDomains?.length
               ? ` · ${run.config.includeDomains.length} specific site(s)`
               : ''}
+            {run.config.freshnessWeight ? ` · freshness ${run.config.freshnessWeight}` : ''}
+            {run.config.authorityWeight ? ` · authority ${run.config.authorityWeight}` : ''}
           </p>
           {run.timings && <Timings t={run.timings} calls={calls} />}
         </CardContent>
@@ -323,7 +325,9 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                   <TableCell>
                     <div
                       className="bg-muted h-1.5 w-12 overflow-hidden rounded"
-                      title={`rank ${s.rankScore.toFixed(2)} · match ${s.relevance.toFixed(2)}`}
+                      title={`rank ${s.rankScore.toFixed(2)} · match ${s.relevance.toFixed(2)}${
+                        run.config.freshnessWeight ? ` · fresh ${s.freshness.toFixed(2)}` : ''
+                      }${run.config.authorityWeight ? ` · authority ${s.authority.toFixed(2)}` : ''}`}
                     >
                       <div
                         className={cn('h-full rounded', scoreColor(s.rankScore))}

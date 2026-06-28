@@ -53,6 +53,8 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
   const [state, action] = useActionState<RunFormState, FormData>(createRunAction, {});
   const [diversity, setDiversity] = useState(0.45);
   const [minRel, setMinRel] = useState(0);
+  const [fresh, setFresh] = useState(0);
+  const [authority, setAuthority] = useState(0);
   // Select isn't a native input; mirror its value into a hidden field for FormData.
   const [time, setTime] = useState('any');
 
@@ -151,6 +153,25 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
             <Slider name="minRelevance" min={0} max={1} step={0.05} defaultValue={[0]} disabled={disabled}
               onValueChange={(v) => setMinRel(v[0]!)} />
             <p className="text-muted-foreground text-[11px]">drop sub-threshold sources from the result list</p>
+          </Field>
+
+          <Field>
+            <Label className="flex justify-between">
+              <span>Freshness weight</span>
+              <span className="text-muted-foreground font-mono">{fresh.toFixed(1)}</span>
+            </Label>
+            <Slider name="freshness" min={0} max={2} step={0.1} defaultValue={[0]} disabled={disabled}
+              onValueChange={(v) => setFresh(v[0]!)} />
+            <p className="text-muted-foreground text-[11px]">favor recent results (news carry dates)</p>
+          </Field>
+          <Field>
+            <Label className="flex justify-between">
+              <span>Authority weight</span>
+              <span className="text-muted-foreground font-mono">{authority.toFixed(1)}</span>
+            </Label>
+            <Slider name="authority" min={0} max={2} step={0.1} defaultValue={[0]} disabled={disabled}
+              onValueChange={(v) => setAuthority(v[0]!)} />
+            <p className="text-muted-foreground text-[11px]">favor popular domains (Tranco) — trades off the long tail</p>
           </Field>
 
           <Field>

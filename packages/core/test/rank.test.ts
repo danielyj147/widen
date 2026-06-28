@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { bm25Scores } from '../src/bm25.js';
+import { authorityScore } from '../src/authority.js';
 import { jaccard, normalize, tokenize } from '../src/text.js';
-import { mmrOrder, orderSources, scoreRelevance } from '../src/rank.js';
+import { freshnessScore, mmrOrder, orderSources, scoreRelevance } from '../src/rank.js';
 import type { MergedSource } from '../src/types.js';
 
 function src(partial: Partial<MergedSource> & { url: string }): MergedSource {
@@ -16,6 +17,9 @@ function src(partial: Partial<MergedSource> & { url: string }): MergedSource {
     bm25Score: 0,
     relevance: 0,
     rankScore: 0,
+    freshness: 0,
+    authority: 0,
+    date: partial.date,
     source: 'web',
   };
 }
@@ -125,6 +129,31 @@ describe('orderSources', () => {
     ];
     const out = orderSources(sources, 'battery suppliers', { rerank: true, diversity: 0.45 });
     expect(out[0]!.url).toBe('https://a.com');
+  });
+
+  it('authority weight lifts a high-Tranco domain above a higher-relevance unknown one', () => {
+    const make = () => [
+      src({ url: 'https://obscure-xyz-9921.com/a', domain: 'obscure-xyz-9921.com', title: 'q', rrfScore: 0.9 }),
+      src({ url: 'https://github.com/b', domain: 'github.com', title: 'q', rrfScore: 0.1 }), // top-Tranco
+    ];
+    // no authority weight: the higher-relevance obscure domain wins
+    const off = orderSources(make(), 'q', { rerank: true, diversity: 0 });
+    expect(off[0]!.domain).toBe('obscure-xyz-9921.com');
+    // authority weighted strongly: the authoritative domain wins despite lower relevance
+    const on = orderSources(make(), 'q', { rerank: true, diversity: 0, authorityWeight: 2 });
+    expect(on[0]!.domain).toBe('github.com');
+  });
+
+  it('freshness weight lifts a recent result above a stale one', () => {
+    const now = Date.parse('2026-06-01T00:00:00Z');
+    const make = () => [
+      src({ url: 'https://a.com', title: 'q', rrfScore: 0.5, date: '2000-01-01' }), // stale
+      src({ url: 'https://b.com', title: 'q', rrfScore: 0.5, date: '2026-05-28' }), // fresh
+    ];
+    const off = orderSources(make(), 'q', { rerank: true, diversity: 0, now });
+    expect(off[0]!.url).toBe('https://a.com'); // tie -> input order preserved
+    const on = orderSources(make(), 'q', { rerank: true, diversity: 0, freshnessWeight: 1, now });
+    expect(on[0]!.url).toBe('https://b.com');
   });
 
   it('drops sources below minRelevance from the displayed list', () => {

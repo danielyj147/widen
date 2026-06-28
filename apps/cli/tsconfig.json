@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": { "@widen/core": ["../../packages/core/src/index.ts"] }
+  },
+  "include": ["src/**/*"]
+}

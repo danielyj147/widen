@@ -3,6 +3,7 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ChevronDown, Loader2, Search } from 'lucide-react';
 import { createRunAction, type RunFormState } from './actions';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Web is always searched. These are extra verticals to pull in alongside it —
 // "news" is a Firecrawl source, the rest are categories. (Defaults checked
@@ -51,6 +51,7 @@ function Field({ children, className }: { children: React.ReactNode; className?:
 
 export function NewRunForm({ disabled }: { disabled: boolean }) {
   const [state, action] = useActionState<RunFormState, FormData>(createRunAction, {});
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [diversity, setDiversity] = useState(0.45);
   const [minRel, setMinRel] = useState(0);
   const [fresh, setFresh] = useState(0);
@@ -72,17 +73,25 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
         <SubmitButton />
       </div>
 
-      <Collapsible>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground group flex items-center gap-1 text-sm"
-          >
-            <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
-            Advanced options
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="bg-card mt-3 grid gap-5 rounded-lg border p-4 sm:grid-cols-2">
+      <div>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((o) => !o)}
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+        >
+          <ChevronDown className={cn('size-4 transition-transform', advancedOpen && 'rotate-180')} />
+          Advanced options
+        </button>
+        {/* Always mounted (hidden via CSS when closed) so the default field values
+            still submit. A Radix Collapsible unmounts its content, which dropped
+            every advanced field from the form and silently reset the run to a
+            single plain search. */}
+        <div
+          className={cn(
+            'bg-card mt-3 grid gap-5 rounded-lg border p-4 sm:grid-cols-2',
+            !advancedOpen && 'hidden',
+          )}
+        >
           <Field>
             <Label htmlFor="budget">Probe budget</Label>
             <Input id="budget" name="budget" type="number" min={1} max={60} defaultValue={24} disabled={disabled} />
@@ -195,8 +204,8 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
             <Checkbox id="llm" name="llm" disabled={disabled} />
             <Label htmlFor="llm" className="font-normal">LLM-enhanced expansion</Label>
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </div>
 
       {state.error && (
         <p className="text-destructive border-destructive/40 bg-destructive/10 rounded-md border px-3 py-2 text-sm">

@@ -58,12 +58,15 @@ export async function createRunAction(
 }
 
 function clampInt(v: FormDataEntryValue | null, def: number, lo: number, hi: number): number {
+  // absent/empty field -> default (Number(null) is 0, which is NOT a missing value)
+  if (v == null || v === '') return def;
   const n = Number(v);
   if (!Number.isFinite(n)) return def;
   return Math.max(lo, Math.min(hi, Math.round(n)));
 }
 
 function clampUnit(v: FormDataEntryValue | null, def: number): number {
+  if (v == null || v === '') return def;
   const n = Number(v);
   if (!Number.isFinite(n)) return def;
   return Math.max(0, Math.min(1, n));

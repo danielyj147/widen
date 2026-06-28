@@ -34,6 +34,39 @@ Two design commitments fall straight out of the brief:
    thin/moderate/saturated verdict. "Latency doesn't matter, completeness does"
    means the product is the *confidence*, not the speed.
 
+### Why this isn't the `/search` playground (the edge)
+
+Firecrawl's [search playground](https://www.firecrawl.dev/app/playground?endpoint=search)
+exposes the same primitives widen uses — `sources`, `categories`, `tbs`,
+`location`, `includeDomains`, `limit`. I expose those knobs too, on purpose, so
+the natural question is: *isn't this a UI wrapper around the playground?* No — and
+the difference is exactly the customer's complaint.
+
+The playground runs **one** `/search` and shows **one** ranking. That is the
+thing the customer says fails them: *"limit 50 gave 40 more of the same; the
+sources we miss don't show up at any limit."* No combination of playground knobs
+fixes that, because every single call still returns one popularity-ranked list.
+Setting `tbs` or `location` in the playground just gives you *a different* single
+list — you'd have to run, read, and reconcile dozens of them by hand. **That
+manual reconciliation is the product.** widen's edge is the layer the playground
+doesn't have:
+
+| | Firecrawl `/search` playground | **widen** |
+|---|---|---|
+| Calls per query | one `/search`, one ranking | a **fan-out** of ~24 probes (reformulation · source-type · time · region · niche), merged + deduped |
+| The flags | knobs on a single shot | knobs on the **whole fan-out** |
+| "How complete was it?" | not answered | **Chao1 recapture estimate, saturation curve, thin/moderate/saturated verdict** |
+| Ranking | Firecrawl's per-query order | **cross-probe RRF + BM25 + MMR** over the merged set (eval-tuned) |
+| Knowing when to stop | manual | **adaptive saturation stop** |
+| Long tail | you hunt for it | **niche-domain forcing + single-probe (★) surfacing + provenance** |
+| Scale | one query at a time | **batch** (thousands/night) → JSON artifacts + per-call **observability** |
+
+So the shared flags are not the overlap that worries me — they're the *inputs* to
+the missing completeness layer. The playground is the **primitive**; widen is the
+**thin layer on top** the brief asked for, and the one that actually answers
+*"how many sources did we miss?"* — a question a single `/search` structurally
+cannot.
+
 ### How it works
 ```
 query ─▶ expand ─▶ fan-out ─▶ merge/dedup ─▶ coverage report ─▶ artifact (JSON)

@@ -1,14 +1,14 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { ProbeAxis } from '@widen/core';
-import { createRun } from '../lib/runs';
+import { ALL_AXES, type ProbeAxis, type RunConfig } from '@widen/core';
+import { createRun } from '@/lib/runs';
 
 export interface RunFormState {
   error?: string;
 }
 
-/** Server action for the ad-hoc "new run" form. Runs the engine, then redirects. */
+/** Server action for the new-search form. Runs the engine, then redirects. */
 export async function createRunAction(
   _prev: RunFormState,
   formData: FormData,
@@ -16,29 +16,29 @@ export async function createRunAction(
   const query = String(formData.get('query') ?? '').trim();
   if (!query) return { error: 'Enter a query.' };
 
-  const budget = clampInt(formData.get('budget'), 24, 1, 60);
-  const llm = formData.get('llm') === 'on';
-  // The rerank checkbox is checked by default; an absent value means the user
-  // unchecked it (opt-out), matching the CLI's --no-rerank.
-  const rerank = formData.get('rerank') === 'on';
-  const diversity = clampUnit(formData.get('diversity'), 0.45);
-  const location = String(formData.get('location') ?? '').trim() || undefined;
+  const cfg: Partial<RunConfig> = {
+    budget: clampInt(formData.get('budget'), 24, 1, 60),
+    diversity: clampUnit(formData.get('diversity'), 0.45),
+    minRelevance: clampUnit(formData.get('minRelevance'), 0),
+    llm: formData.get('llm') === 'on',
+    // rerank checkbox defaults checked; absent => opted out.
+    rerank: formData.get('rerank') === 'on',
+  };
+  const location = String(formData.get('location') ?? '').trim();
+  if (location) cfg.location = location;
+
+  // axes checkboxes (each named axis:<name>); fall back to all if none chosen.
+  const axes = ALL_AXES.filter((a) => formData.get(`axis:${a}`) === 'on');
+  cfg.axes = axes.length ? (axes as ProbeAxis[]) : ALL_AXES;
 
   let id: string;
   try {
-    const artifact = await createRun(query, {
-      budget,
-      llm,
-      rerank,
-      diversity,
-      location,
-      axes: ['base', 'reformulation', 'source-type', 'time', 'region'] as ProbeAxis[],
-    });
+    const artifact = await createRun(query, cfg);
     id = artifact.id;
   } catch (err) {
     return { error: (err as Error).message };
   }
-  revalidatePath('/');
+  revalidatePath('/', 'layout'); // refresh the sidebar history
   redirect(`/runs/${id}`);
 }
 

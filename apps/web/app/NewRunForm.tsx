@@ -35,7 +35,11 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
         </label>
         <label className="dim small row" style={{ gap: 6 }}>
           <input name="rerank" type="checkbox" defaultChecked style={{ width: 'auto' }} disabled={disabled} />
-          rerank (RRF)
+          rerank
+        </label>
+        <label className="dim small row" style={{ gap: 6 }} title="0 = pure relevance, 1 = max source diversity (MMR)">
+          diversity
+          <input name="diversity" type="number" defaultValue={0.45} min={0} max={1} step={0.05} style={{ width: 72 }} disabled={disabled} />
         </label>
         <SubmitButton />
       </div>

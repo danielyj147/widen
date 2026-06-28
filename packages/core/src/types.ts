@@ -76,6 +76,10 @@ export interface MergedSource {
    * ordering when reranking is on.
    */
   rrfScore: number;
+  /** BM25 of title+snippet vs the original query (raw; 0 until ranking runs). */
+  bm25Score: number;
+  /** Blended relevance in [0,1] (normalized RRF + BM25). Set by ranking. */
+  relevance: number;
   source: 'web' | 'news';
 }
 
@@ -135,8 +139,10 @@ export interface RunConfig {
   maxRetries: number;
   perProbeTimeoutMs: number;
   llm: boolean;
-  /** order the merged sources by Reciprocal Rank Fusion (default true). */
+  /** order the merged sources by relevance + MMR diversity (default true). */
   rerank: boolean;
+  /** MMR diversity in [0,1]: 0 = pure relevance, 1 = max source spread. */
+  diversity: number;
   /** adaptive stop: min new domains a wave must add to keep going. */
   saturationMinNewDomains: number;
   /** adaptive stop: consecutive low-yield waves tolerated before stopping. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeResults, rerankSources, RRF_K } from '../src/merge.js';
+import { mergeResults, RRF_K } from '../src/merge.js';
 import type { ProbeResult } from '../src/types.js';
 
 function pr(probeId: string, results: Array<[string, number]>): ProbeResult {
@@ -42,32 +42,10 @@ describe('mergeResults', () => {
     // two probes, each rank 1 -> 2 / (K + 1)
     expect(a.rrfScore).toBeCloseTo(2 / (RRF_K + 1), 8);
   });
-});
 
-describe('rerankSources (RRF)', () => {
-  it('ranks a corroborated source above a single-probe one at the same rank', () => {
-    const merged = mergeResults([
-      pr('p1', [['https://corro.com', 2]]),
-      pr('p2', [['https://corro.com', 2]]),
-      pr('p3', [['https://solo.com', 1]]),
-    ]);
-    const ranked = rerankSources(merged);
-    expect(ranked[0]!.domain).toBe('corro.com'); // 2/(K+2) > 1/(K+1)
-  });
-
-  it('still scores a long-tail #1 above a popular source buried deep', () => {
-    const merged = mergeResults([
-      pr('p1', [['https://niche.com', 1]]), // one probe, rank 1
-      pr('p2', [['https://popular.com', 40]]), // one probe, rank 40
-    ]);
-    const ranked = rerankSources(merged);
-    expect(ranked[0]!.domain).toBe('niche.com');
-  });
-
-  it('does not mutate the input array', () => {
-    const merged = mergeResults([pr('p1', [['https://a.com', 5]]), pr('p2', [['https://b.com', 1]])]);
-    const before = merged.map((m) => m.url);
-    rerankSources(merged);
-    expect(merged.map((m) => m.url)).toEqual(before);
+  it('initializes bm25/relevance to 0 (set later by ranking)', () => {
+    const [s] = mergeResults([pr('p1', [['https://a.com', 1]])]);
+    expect(s!.bm25Score).toBe(0);
+    expect(s!.relevance).toBe(0);
   });
 });

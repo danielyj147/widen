@@ -21,6 +21,7 @@ export const DEFAULT_CONFIG: RunConfig = {
   perProbeTimeoutMs: 30_000,
   llm: false,
   rerank: true,
+  diversity: 0.45,
   saturationMinNewDomains: 2,
   saturationPatience: 2,
   axes: ALL_AXES,

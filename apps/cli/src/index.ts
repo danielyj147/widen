@@ -33,7 +33,8 @@ ${c.bold('OPTIONS')}
   --location <name>   bias the region sweep, e.g. "Germany"
   --axes <list>       comma list of: ${ALL_AXES.join(',')}
   --llm               use LLM-enhanced expansion (reads LLM_* env; off by default)
-  --no-rerank         keep discovery order instead of Reciprocal Rank Fusion
+  --diversity <0..1>  MMR diversity: 0 = pure relevance, 1 = max source spread  (default 0.45)
+  --no-rerank         keep discovery order (skip relevance ranking + diversity)
   --out <dir>         where run artifacts live        (default ./runs)
   --no-save           don't write an artifact
   --json              print the full artifact as JSON (implies --quiet)
@@ -71,6 +72,7 @@ function parse(argv: string[]): CliOpts {
       concurrency: { type: 'string' },
       limit: { type: 'string' },
       location: { type: 'string' },
+      diversity: { type: 'string' },
       axes: { type: 'string' },
       out: { type: 'string' },
       llm: { type: 'boolean' },
@@ -92,6 +94,7 @@ function configFrom(values: CliOpts['values']): Partial<RunConfig> {
   if (values.location) cfg.location = values.location as string;
   if (values.llm) cfg.llm = true;
   if (values['no-rerank']) cfg.rerank = false;
+  if (values.diversity != null) cfg.diversity = unit('--diversity', values.diversity as string);
   if (values.axes) {
     const axes = (values.axes as string).split(',').map((a) => a.trim()) as ProbeAxis[];
     const bad = axes.filter((a) => !ALL_AXES.includes(a));
@@ -104,6 +107,12 @@ function configFrom(values: CliOpts['values']): Partial<RunConfig> {
 function int(flag: string, raw: string): number {
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) fail(`${flag} must be a positive integer, got "${raw}"`);
+  return n;
+}
+
+function unit(flag: string, raw: string): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 1) fail(`${flag} must be between 0 and 1, got "${raw}"`);
   return n;
 }
 

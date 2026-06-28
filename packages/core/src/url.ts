@@ -71,6 +71,12 @@ export function domainOf(input: string): string {
     'co.za',
     'com.tr',
     'com.cn',
+    'co.il',
+    'co.nz',
+    'com.sg',
+    'com.hk',
+    'co.id',
+    'co.th',
   ]);
   const lastTwo = parts.slice(-2).join('.');
   if (twoLabelSuffixes.has(lastTwo)) return parts.slice(-3).join('.');

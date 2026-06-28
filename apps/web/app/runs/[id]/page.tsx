@@ -38,7 +38,9 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           {new Date(run.createdAt).toLocaleString()} · stopped on{' '}
           <span className="mono">{cov.stopReason}</span> · ~{run.estimatedCredits} credits ·{' '}
           {run.config.llm ? 'LLM-enhanced expansion' : 'deterministic expansion'} ·{' '}
-          {run.config.rerank ? 'RRF-reranked' : 'discovery order'}
+          {run.config.rerank
+            ? `ranked: RRF + BM25, MMR diversity ${run.config.diversity ?? 0}`
+            : 'discovery order'}
         </p>
       </div>
 

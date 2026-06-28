@@ -50,6 +50,8 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
           foundByProbes: [pr.probeId],
           bestPosition: r.position ?? 999,
           rrfScore: rrfContribution(r.position),
+          bm25Score: 0, // set later by the ranking step
+          relevance: 0,
           source: r.source,
         });
       }
@@ -57,24 +59,9 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
   }
 
   // Baseline (rerank-off) order: best single-probe rank, then corroboration.
+  // When reranking is on, rank.ts/orderSources reorders by relevance + MMR.
   return [...byUrl.values()].sort(
     (a, b) =>
       a.bestPosition - b.bestPosition || b.foundByProbes.length - a.foundByProbes.length,
-  );
-}
-
-/**
- * Reorder merged sources by Reciprocal Rank Fusion. This is widen's default
- * ranking: it fuses every probe's ranked list into one order that rewards both
- * a good rank and agreement across probes — the principled way to combine the
- * many rankings widen produces. Ties break toward more corroboration, then the
- * better single-probe rank. Returns a new array; the input is left untouched.
- */
-export function rerankSources(sources: MergedSource[]): MergedSource[] {
-  return [...sources].sort(
-    (a, b) =>
-      b.rrfScore - a.rrfScore ||
-      b.foundByProbes.length - a.foundByProbes.length ||
-      a.bestPosition - b.bestPosition,
   );
 }

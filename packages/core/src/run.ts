@@ -3,7 +3,8 @@ import { readLlmEnv, resolveConfig, type LlmEnv } from './config.js';
 import { buildCoverage } from './coverage.js';
 import { expand } from './expand/index.js';
 import type { SearchClient } from './firecrawl.js';
-import { mergeResults, rerankSources } from './merge.js';
+import { mergeResults } from './merge.js';
+import { orderSources } from './rank.js';
 import type {
   Probe,
   ProbeResult,
@@ -103,8 +104,9 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
   }
 
   const merged = mergeResults(executed);
-  // Coverage is order-independent; ordering is presentation. Default to RRF.
-  const sources = cfg.rerank ? rerankSources(merged) : merged;
+  // Coverage is order-independent; ordering is presentation. Default: relevance
+  // (RRF + BM25) diversified by MMR. --no-rerank keeps discovery order.
+  const sources = orderSources(merged, query, { rerank: cfg.rerank, diversity: cfg.diversity });
   const coverage = buildCoverage(executedProbes, executed, sources, cfg, stopReason);
   const finishedAt = now();
 

@@ -30,5 +30,6 @@ describe('domainOf', () => {
     expect(domainOf('https://news.bbc.co.uk/story')).toBe('bbc.co.uk');
     expect(domainOf('https://blog.example.com')).toBe('example.com');
     expect(domainOf('https://www.example.com')).toBe('example.com');
+    expect(domainOf('https://sub.cdata.co.il/x')).toBe('cdata.co.il');
   });
 });

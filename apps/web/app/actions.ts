@@ -21,6 +21,7 @@ export async function createRunAction(
   // The rerank checkbox is checked by default; an absent value means the user
   // unchecked it (opt-out), matching the CLI's --no-rerank.
   const rerank = formData.get('rerank') === 'on';
+  const diversity = clampUnit(formData.get('diversity'), 0.45);
   const location = String(formData.get('location') ?? '').trim() || undefined;
 
   let id: string;
@@ -29,6 +30,7 @@ export async function createRunAction(
       budget,
       llm,
       rerank,
+      diversity,
       location,
       axes: ['base', 'reformulation', 'source-type', 'time', 'region'] as ProbeAxis[],
     });
@@ -44,4 +46,10 @@ function clampInt(v: FormDataEntryValue | null, def: number, lo: number, hi: num
   const n = Number(v);
   if (!Number.isFinite(n)) return def;
   return Math.max(lo, Math.min(hi, Math.round(n)));
+}
+
+function clampUnit(v: FormDataEntryValue | null, def: number): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(0, Math.min(1, n));
 }

@@ -53,13 +53,25 @@ query ─▶ expand ─▶ fan-out ─▶ merge/dedup ─▶ coverage report ─
 - **Merge** — conservative URL canonicalization (strip tracking params, www,
   fragments; never collapse distinct paths) with full **provenance**: which
   probes found each source.
-- **Rank** — the fused set is ordered by **Reciprocal Rank Fusion** (the standard
-  method for combining many ranked lists, which is exactly what widen produces),
-  on by default, `--no-rerank` for raw discovery order. RRF rewards rank *and*
-  corroboration but, being a sum of `1/(k+rank)`, still scores a source that
-  ranked highly in one niche probe — so the long tail is ordered fairly, not
-  buried (verified: a corroborated hit rises to the top while single-probe finds
-  stay visible right below it).
+- **Rank** — on by default (`--no-rerank` for raw discovery order). Two parts:
+  - **Relevance** blends two signals. **(1) Reciprocal Rank Fusion** over each
+    probe's rank list — the right method here precisely *because Firecrawl returns
+    ranks, not scores* (the SDK gives positions, no relevance score), so you
+    cannot average BM25 across probes; RRF needs only ranks and is robust to
+    cross-probe incomparability. **(2) BM25** of each result's title+snippet
+    against the *original* query — an independent, query-grounded signal that
+    re-anchors relevance after a probe reformulates the query (a hit that ranked
+    well for `"X alternatives"` but barely mentions `X` scores low). RRF leads
+    (0.65), BM25 follows (0.35) — snippets are short and SEO-shaped, so BM25 is a
+    nudge, not ground truth, and we don't pretend otherwise.
+  - **Diversity** via **Maximal Marginal Relevance**: `argmax λ·Rel(d) −
+    (1−λ)·max sim(d, chosen)`, where similarity is same-domain (drives *source*
+    diversity) plus title/snippet overlap (catches syndicated near-dupes). The
+    **`--diversity` flag (0–1, default 0.45)** sets `λ = 1−diversity`, so the
+    same tool serves "rank the obvious best" (0) and "spread across as many
+    distinct sources as possible" (1). Verified live: at 0 the top is SEO review
+    aggregators; at 1 it surfaces FCC-filing PDFs and academic papers — the long
+    tail — while keeping the #1 relevant hit.
 - **Coverage** — the trust artifact (below).
 - **Adaptive stop** — keep probing until new domains stop appearing
   (`saturated`), the budget is hit (`budget-exhausted`), or candidates run out.
@@ -96,12 +108,12 @@ classification, adaptive stop) against a fake client — no network, no credits.
 ## What I deliberately did **not** build
 
 - **No *intent-aware* re-ranking (feedback #5's news/buying/research).** widen
-  does rank its fused set (RRF, above), but per-query *intent* ranking — boosting
-  freshness for news, credibility for research, comparison pages for buying — is
-  *precision*, a different axis from *coverage*, and can't be a blanket default
-  since intent varies per query. RRF is the right universal default; intent
-  ranking is a separate, opt-in feature a reranker would own, and widen's fused
-  set could feed it.
+  does rank its fused set (relevance + MMR diversity, above), but per-query
+  *intent* ranking — boosting freshness for news, credibility for research,
+  comparison pages for buying — is *precision*, a different axis from *coverage*,
+  and can't be a blanket default since intent varies per query. The
+  relevance+diversity ranking is the right universal default; intent ranking is a
+  separate, opt-in feature a reranker would own, and widen's fused set could feed it.
 - **No LLM-as-default and no agentic loop.** Reintroducing an opaque
   deep-research agent is the one thing the brief warns against. Determinism is
   the point.
@@ -164,7 +176,7 @@ test.
 | 2 | Price comparison (growth, $42k, ↓8%) | BYO residential proxies | **Decline the control, fix the failure.** They *said* they'd rather it "just work." Proxy bursts on one domain → a reliability/proxy-tier fix, not a customer-managed proxy surface (abuse + support cost). Arms-race-adjacent; declining ARR. |
 | 3 | OSS user (free) | `dedupe: true` markdown | **Won't build here.** Legit and cheap, but it's a *scrape* output option, not search. Belongs to the scrape team; they already have a workaround. Free tier, low leverage. |
 | 4 | Indie dev (hobby, $348, ↑) | "3 results, snippets only, fast" | **Already exists — config, not a feature.** `/search` with `limit:3` and no `scrapeOptions` is exactly this. It's the *precision* end (opposite of `widen`) and validates not force-scraping. Worth a docs example (~4,100 similar accounts). |
-| 5 | AI research startup (growth, $36k, ↑14%) | `intent`/rerank parameter | **Partly built.** widen now ranks its fused set via RRF by default (`--no-rerank` to opt out). The per-query *intent* ranking (news/buying/research) stays out of scope — it can't be a blanket default; widen's fused set could feed such a reranker. |
+| 5 | AI research startup (growth, $36k, ↑14%) | `intent`/rerank parameter | **Partly built.** widen ranks its fused set by relevance (RRF + BM25) with a tunable **`--diversity`** knob (MMR). The per-query *intent* ranking (news/buying/research) stays out of scope — it can't be a blanket default; widen's fused set could feed such a reranker. |
 | 6 | Fortune 500 (prospect) | "Understand any website" | **Out of scope; composable today.** RAG over `/search`+`/scrape`+`/extract`; a solutions/agent engagement, not a missing primitive. |
 | 7 | Workflow automation (growth, $28k, ↑6%) | Which of 14 actions failed + page state | **Real & high-value, but scrape-side.** Step-index errors + screenshots belong to the actions/scrape team. Ties to the 214 error-confusion tickets — flagged below — but not the search problem. |
 | 8 | Startup (growth, $31k, flat) | Tail latency / "know a page is slow upfront" | **Not this surface.** Scrape reliability + observability. |

@@ -11,7 +11,8 @@ export type ProbeAxis =
   | 'reformulation' // synonyms / facets / question forms / entity pivots
   | 'source-type' // forums, trade press, news, pdf/research/github categories
   | 'time' // tbs windows — pull older and fresher long-tail
-  | 'region'; // location sweeps — regional press
+  | 'region' // location sweeps — regional press
+  | 'niche'; // user-supplied domains, searched directly (bypass SEO ranking)
 
 /** A subset of Firecrawl /search params we vary per probe. */
 export interface ProbeParams {
@@ -40,7 +41,7 @@ export interface RawResult {
   title: string;
   snippet: string;
   /** 'web' | 'news' — which Firecrawl source returned it. */
-  source: 'web' | 'news';
+  source: 'web' | 'news' | 'images';
   /** Rank within that probe's result list (1-based), if known. */
   position?: number;
 }
@@ -80,7 +81,7 @@ export interface MergedSource {
   bm25Score: number;
   /** Blended relevance in [0,1] (normalized RRF + BM25). Set by ranking. */
   relevance: number;
-  source: 'web' | 'news';
+  source: 'web' | 'news' | 'images';
 }
 
 /** Estimated total richness via Chao1, plus the inputs so it's auditable. */
@@ -151,6 +152,18 @@ export interface RunConfig {
   saturationPatience: number;
   axes: ProbeAxis[];
   location?: string;
+  /** result sources to draw from (web/news/images). */
+  sources: Array<'web' | 'news' | 'images'>;
+  /** Firecrawl categories to probe (research/pdf/github). */
+  categories: Array<'github' | 'research' | 'pdf'>;
+  /** regions for the region sweep. */
+  regions: string[];
+  /** global time filter (Firecrawl tbs, e.g. 'qdr:m'); applied to web probes. */
+  timeRange?: string;
+  /** max result age in days — precise freshness window (overrides timeRange). */
+  maxAgeDays?: number;
+  /** niche domains to search directly via includeDomains — finds non-SEO sources. */
+  includeDomains: string[];
 }
 
 /**

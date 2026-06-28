@@ -82,6 +82,15 @@ export function normalizeResults(data: unknown): RawResult[] {
       position: r.position ?? i + 1,
     });
   });
+  // Image results carry the containing page `url` — useful for source diversity.
+  const images = Array.isArray((d as { images?: unknown[] }).images)
+    ? (d as { images: unknown[] }).images
+    : [];
+  images.forEach((item, i) => {
+    const r = item as { url?: string; title?: string; position?: number };
+    if (!r?.url) return;
+    out.push({ url: r.url, title: r.title ?? '', snippet: '', source: 'images', position: r.position ?? i + 1 });
+  });
   return out;
 }
 

@@ -40,6 +40,21 @@ describe('deterministicProbes', () => {
     const probes = deterministicProbes('q', resolveConfig({ location: 'Japan', axes: ['region'] }));
     expect(probes[0]!.params.location).toBe('Japan');
   });
+
+  it('searches niche domains directly via includeDomains', () => {
+    const probes = deterministicProbes(
+      'q',
+      resolveConfig({ axes: ['niche'], includeDomains: ['tradepub.com', 'forum.org'] }),
+    );
+    expect(probes).toHaveLength(2);
+    expect(probes.map((p) => p.params.includeDomains?.[0])).toEqual(['tradepub.com', 'forum.org']);
+  });
+
+  it('applies a global time range to web probes and skips the time sweep', () => {
+    const probes = deterministicProbes('q', resolveConfig({ axes: ['base', 'time'], timeRange: 'qdr:m' }));
+    expect(probes.every((p) => p.axis !== 'time')).toBe(true); // time sweep skipped
+    expect(probes.find((p) => p.axis === 'base')!.params.tbs).toBe('qdr:m');
+  });
 });
 
 describe('dedupeProbes', () => {

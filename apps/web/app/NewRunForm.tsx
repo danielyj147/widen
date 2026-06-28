@@ -5,17 +5,43 @@ import { ChevronDown, Loader2, Search } from 'lucide-react';
 import { createRunAction, type RunFormState } from './actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const AXES: Array<{ key: string; label: string }> = [
+const AXES = [
   { key: 'base', label: 'base query' },
   { key: 'reformulation', label: 'reformulations' },
-  { key: 'source-type', label: 'source types (news · pdf · research · forums)' },
+  { key: 'source-type', label: 'source types' },
   { key: 'time', label: 'time windows' },
   { key: 'region', label: 'regional sweep' },
+  { key: 'niche', label: 'niche domains' },
+];
+const SOURCES = [
+  { key: 'web', label: 'web' },
+  { key: 'news', label: 'news' },
+  { key: 'images', label: 'images' },
+];
+const CATEGORIES = [
+  { key: 'research', label: 'research' },
+  { key: 'pdf', label: 'pdf' },
+  { key: 'github', label: 'github' },
+];
+const TIMES = [
+  { value: 'any', label: 'Any time' },
+  { value: 'qdr:d', label: 'Past day' },
+  { value: 'qdr:w', label: 'Past week' },
+  { value: 'qdr:m', label: 'Past month' },
+  { value: 'qdr:y', label: 'Past year' },
 ];
 
 function SubmitButton() {
@@ -28,10 +54,16 @@ function SubmitButton() {
   );
 }
 
+function Field({ children }: { children: React.ReactNode }) {
+  return <div className="space-y-2">{children}</div>;
+}
+
 export function NewRunForm({ disabled }: { disabled: boolean }) {
   const [state, action] = useActionState<RunFormState, FormData>(createRunAction, {});
   const [diversity, setDiversity] = useState(0.45);
   const [minRel, setMinRel] = useState(0);
+  // Select isn't a native input; mirror its value into a hidden field for FormData.
+  const [time, setTime] = useState('any');
 
   return (
     <form action={action} className="space-y-3">
@@ -47,7 +79,8 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
         <SubmitButton />
       </div>
       <p className="text-muted-foreground text-xs">
-        Runs synchronously — a 24-probe fan-out takes ~10–30s, then redirects to the report.
+        Wide fan-out + reranking are on by default. Runs synchronously (~10–30s), then redirects to
+        the report.
       </p>
 
       <Collapsible>
@@ -61,16 +94,69 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="bg-card mt-3 grid gap-5 rounded-lg border p-4 sm:grid-cols-2">
-          <div className="space-y-2">
+          <Field>
             <Label htmlFor="budget">Probe budget</Label>
             <Input id="budget" name="budget" type="number" min={1} max={60} defaultValue={24} disabled={disabled} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Location bias (optional)</Label>
-            <Input id="location" name="location" placeholder="e.g. Germany" disabled={disabled} />
-          </div>
+            <p className="text-muted-foreground text-[11px]">
+              How many searches to run. More = wider coverage, more credits.
+            </p>
+          </Field>
+          <Field>
+            <Label htmlFor="time">Time range</Label>
+            <input type="hidden" name="time" value={time === 'any' ? '' : time} />
+            <Select value={time} onValueChange={setTime} disabled={disabled}>
+              <SelectTrigger id="time">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <Label htmlFor="maxAge">Max age (days)</Label>
+            <Input id="maxAge" name="maxAge" type="number" min={1} placeholder="any" disabled={disabled} />
+            <p className="text-muted-foreground text-[11px]">precise freshness; overrides time range</p>
+          </Field>
 
-          <div className="space-y-2">
+          <Field>
+            <Label>Sources</Label>
+            <div className="flex flex-wrap gap-3">
+              {SOURCES.map((s) => (
+                <label key={s.key} className="flex items-center gap-2 text-sm">
+                  <Checkbox name={`source:${s.key}`} defaultChecked={s.key !== 'images'} disabled={disabled} />
+                  {s.label}
+                </label>
+              ))}
+            </div>
+          </Field>
+          <Field>
+            <Label>Categories</Label>
+            <div className="flex flex-wrap gap-3">
+              {CATEGORIES.map((c) => (
+                <label key={c.key} className="flex items-center gap-2 text-sm">
+                  <Checkbox name={`cat:${c.key}`} defaultChecked={c.key !== 'github'} disabled={disabled} />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </Field>
+
+          <Field>
+            <Label htmlFor="regions">Regions</Label>
+            <Input id="regions" name="regions" placeholder="Germany, Japan, Brazil" disabled={disabled} />
+            <p className="text-muted-foreground text-[11px]">comma-separated; blank uses the default sweep</p>
+          </Field>
+          <Field>
+            <Label htmlFor="location">Primary location</Label>
+            <Input id="location" name="location" placeholder="e.g. United Kingdom" disabled={disabled} />
+          </Field>
+
+          <Field>
             <Label className="flex justify-between">
               <span>Diversity</span>
               <span className="text-muted-foreground font-mono">{diversity.toFixed(2)}</span>
@@ -78,8 +164,8 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
             <Slider name="diversity" min={0} max={1} step={0.05} defaultValue={[0.45]} disabled={disabled}
               onValueChange={(v) => setDiversity(v[0]!)} />
             <p className="text-muted-foreground text-[11px]">0 = pure relevance · 1 = max source spread (MMR)</p>
-          </div>
-          <div className="space-y-2">
+          </Field>
+          <Field>
             <Label className="flex justify-between">
               <span>Min relevance</span>
               <span className="text-muted-foreground font-mono">{minRel.toFixed(2)}</span>
@@ -87,11 +173,24 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
             <Slider name="minRelevance" min={0} max={1} step={0.05} defaultValue={[0]} disabled={disabled}
               onValueChange={(v) => setMinRel(v[0]!)} />
             <p className="text-muted-foreground text-[11px]">drop sub-threshold sources from the result list</p>
-          </div>
+          </Field>
 
-          <div className="space-y-2 sm:col-span-2">
+          <Field>
+            <Label htmlFor="includeDomains">Niche domains</Label>
+            <Textarea
+              id="includeDomains"
+              name="includeDomains"
+              rows={2}
+              placeholder="tradepub.com, regionalnews.co.uk, forum.example.org"
+              disabled={disabled}
+            />
+            <p className="text-muted-foreground text-[11px]">
+              Searched directly — surfaces sources that don’t rank in open search.
+            </p>
+          </Field>
+          <Field>
             <Label>Search strategies</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2">
               {AXES.map((a) => (
                 <label key={a.key} className="flex items-center gap-2 text-sm">
                   <Checkbox name={`axis:${a.key}`} defaultChecked disabled={disabled} />
@@ -99,7 +198,7 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
                 </label>
               ))}
             </div>
-          </div>
+          </Field>
 
           <div className="flex items-center gap-2">
             <Checkbox id="rerank" name="rerank" defaultChecked disabled={disabled} />

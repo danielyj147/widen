@@ -27,10 +27,16 @@ ${c.bold('USAGE')}
   widen show <run-id> [--out <dir>]    print a saved run's report
 
 ${c.bold('OPTIONS')}
-  --budget <n>        max probes to issue            (default 24)
+  --budget <n>        max search probes to issue — more = wider coverage, more credits  (default 24)
   --concurrency <n>   probes in flight at once        (default 6)
   --limit <n>         results per probe               (default 10)
-  --location <name>   bias the region sweep, e.g. "Germany"
+  --sources <list>    result sources: web,news,images           (default web,news)
+  --categories <list> categories: research,pdf,github           (default research,pdf)
+  --regions <list>    comma list of regions to sweep, e.g. "Germany,Japan"
+  --location <name>   primary region bias (added to the sweep)
+  --time <range>      time filter: day | week | month | year | any  (default any)
+  --max-age <days>    results no older than N days (precise; overrides --time)
+  --include-domains <list>  niche sites to search directly (find non-SEO sources), e.g. "tradepub.com,forum.org"
   --axes <list>       comma list of: ${ALL_AXES.join(',')}
   --llm               use LLM-enhanced expansion (reads LLM_* env; off by default)
   --diversity <0..1>  MMR diversity: 0 = pure relevance, 1 = max source spread  (default 0.45)
@@ -73,6 +79,12 @@ function parse(argv: string[]): CliOpts {
       concurrency: { type: 'string' },
       limit: { type: 'string' },
       location: { type: 'string' },
+      sources: { type: 'string' },
+      categories: { type: 'string' },
+      regions: { type: 'string' },
+      time: { type: 'string' },
+      'max-age': { type: 'string' },
+      'include-domains': { type: 'string' },
       diversity: { type: 'string' },
       'min-relevance': { type: 'string' },
       axes: { type: 'string' },
@@ -99,6 +111,24 @@ function configFrom(values: CliOpts['values']): Partial<RunConfig> {
   if (values.diversity != null) cfg.diversity = unit('--diversity', values.diversity as string);
   if (values['min-relevance'] != null)
     cfg.minRelevance = unit('--min-relevance', values['min-relevance'] as string);
+  if (values.sources) {
+    const valid = ['web', 'news', 'images'];
+    const list = csv(values.sources as string);
+    const bad = list.filter((s) => !valid.includes(s));
+    if (bad.length) fail(`unknown sources: ${bad.join(', ')}. valid: ${valid.join(', ')}`);
+    cfg.sources = list as RunConfig['sources'];
+  }
+  if (values.categories) {
+    const valid = ['research', 'pdf', 'github'];
+    const list = csv(values.categories as string);
+    const bad = list.filter((s) => !valid.includes(s));
+    if (bad.length) fail(`unknown categories: ${bad.join(', ')}. valid: ${valid.join(', ')}`);
+    cfg.categories = list as RunConfig['categories'];
+  }
+  if (values.regions) cfg.regions = csv(values.regions as string);
+  if (values['include-domains']) cfg.includeDomains = csv(values['include-domains'] as string);
+  if (values.time) cfg.timeRange = parseTimeRange(values.time as string);
+  if (values['max-age']) cfg.maxAgeDays = int('--max-age', values['max-age'] as string);
   if (values.axes) {
     const axes = (values.axes as string).split(',').map((a) => a.trim()) as ProbeAxis[];
     const bad = axes.filter((a) => !ALL_AXES.includes(a));
@@ -118,6 +148,23 @@ function unit(flag: string, raw: string): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0 || n > 1) fail(`${flag} must be between 0 and 1, got "${raw}"`);
   return n;
+}
+
+function csv(raw: string): string[] {
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+const TIME_MAP: Record<string, string> = {
+  day: 'qdr:d',
+  week: 'qdr:w',
+  month: 'qdr:m',
+  year: 'qdr:y',
+  any: '',
+};
+function parseTimeRange(raw: string): string {
+  const key = raw.trim().toLowerCase();
+  if (!(key in TIME_MAP)) fail(`--time must be one of: ${Object.keys(TIME_MAP).join(', ')}`);
+  return TIME_MAP[key]!;
 }
 
 function outDir(values: CliOpts['values']): string {

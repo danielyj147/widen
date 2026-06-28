@@ -31,6 +31,22 @@ export async function createRunAction(
   const axes = ALL_AXES.filter((a) => formData.get(`axis:${a}`) === 'on');
   cfg.axes = axes.length ? (axes as ProbeAxis[]) : ALL_AXES;
 
+  // sources / categories checkboxes
+  const sources = (['web', 'news', 'images'] as const).filter((s) => formData.get(`source:${s}`) === 'on');
+  if (sources.length) cfg.sources = [...sources];
+  const categories = (['research', 'pdf', 'github'] as const).filter((c) => formData.get(`cat:${c}`) === 'on');
+  cfg.categories = [...categories]; // allow empty (skip category probes)
+
+  // regions (comma) and niche include-domains (comma or newline)
+  const regions = splitList(String(formData.get('regions') ?? ''));
+  if (regions.length) cfg.regions = regions;
+  cfg.includeDomains = splitList(String(formData.get('includeDomains') ?? ''));
+
+  const time = String(formData.get('time') ?? '').trim();
+  if (time) cfg.timeRange = time; // already a tbs value from the <Select>
+  const maxAge = Number(formData.get('maxAge'));
+  if (Number.isFinite(maxAge) && maxAge > 0) cfg.maxAgeDays = Math.round(maxAge);
+
   let id: string;
   try {
     const artifact = await createRun(query, cfg);
@@ -52,4 +68,12 @@ function clampUnit(v: FormDataEntryValue | null, def: number): number {
   const n = Number(v);
   if (!Number.isFinite(n)) return def;
   return Math.max(0, Math.min(1, n));
+}
+
+/** split a comma- or newline-separated list into trimmed, non-empty entries. */
+function splitList(raw: string): string[] {
+  return raw
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }

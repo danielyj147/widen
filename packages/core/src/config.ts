@@ -6,6 +6,25 @@ export const ALL_AXES: ProbeAxis[] = [
   'source-type',
   'time',
   'region',
+  'niche',
+];
+
+/** Default region sweep. Each reorders the SERP and surfaces regional press. */
+export const DEFAULT_REGIONS = [
+  'United States',
+  'United Kingdom',
+  'India',
+  'Australia',
+  'Germany',
+];
+
+/** Time-range presets exposed to users (Firecrawl tbs values). */
+export const TIME_RANGES: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Any time' },
+  { value: 'qdr:d', label: 'Past day' },
+  { value: 'qdr:w', label: 'Past week' },
+  { value: 'qdr:m', label: 'Past month' },
+  { value: 'qdr:y', label: 'Past year' },
 ];
 
 /**
@@ -26,6 +45,10 @@ export const DEFAULT_CONFIG: RunConfig = {
   saturationMinNewDomains: 2,
   saturationPatience: 2,
   axes: ALL_AXES,
+  sources: ['web', 'news'],
+  categories: ['research', 'pdf'],
+  regions: DEFAULT_REGIONS,
+  includeDomains: [],
 };
 
 export function resolveConfig(overrides: Partial<RunConfig> = {}): RunConfig {

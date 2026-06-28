@@ -86,6 +86,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             {run.config.rerank
               ? `ranked: RRF + BM25, MMR diversity ${run.config.diversity ?? 0}`
               : 'discovery order'}
+            {run.config.maxAgeDays
+              ? ` · ≤${run.config.maxAgeDays}d old`
+              : run.config.timeRange
+                ? ` · time ${run.config.timeRange}`
+                : ''}
+            {run.config.includeDomains?.length
+              ? ` · ${run.config.includeDomains.length} niche domain(s)`
+              : ''}
           </p>
           {run.timings && <Timings t={run.timings} calls={calls} />}
         </CardContent>

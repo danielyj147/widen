@@ -42,9 +42,6 @@ const SOURCE_TYPE_QUERIES: Array<{ suffix: string; rationale: string }> = [
   { suffix: 'blog', rationale: 'independent blogs outside the SEO front page' },
 ];
 
-/** A small default region sweep. Each reorders the SERP and surfaces regional press. */
-const DEFAULT_REGIONS = ['United States', 'United Kingdom', 'India', 'Australia', 'Germany'];
-
 /**
  * Build the full prioritized candidate list for a query. The orchestrator
  * decides how many to actually run (budget + adaptive stop). Order here encodes
@@ -54,50 +51,89 @@ export function deterministicProbes(query: string, cfg: RunConfig): Probe[] {
   const q = query.trim();
   const limit = cfg.perProbeLimit;
   const axes = new Set(cfg.axes);
+  const sources = new Set(cfg.sources);
+  const tbs = resolveTbs(cfg); // global time filter for web probes
   const out: Probe[] = [];
+
+  // helper: a web probe that respects the global time-range filter.
+  const web = (extra?: Partial<ProbeParams>): ProbeParams => ({
+    limit,
+    sources: ['web'],
+    ...(tbs ? { tbs } : {}),
+    ...extra,
+  });
 
   // 1. base — the honest baseline; mirrors what the customer runs today.
   if (axes.has('base')) {
-    out.push(mk(q, 'base', { limit, sources: ['web'] }, 'the original query, unmodified'));
+    out.push(mk(q, 'base', web(), 'the original query, unmodified'));
   }
 
-  // 2. source-type — the single strongest lever for the long tail.
+  // 2. niche — user explicitly named these domains, so prioritize them: search
+  //    each directly via includeDomains, surfacing content that doesn't rank in
+  //    open search (the "trade pubs / niche forums it never surfaces" request).
+  if (axes.has('niche')) {
+    for (const domain of dedupeKeepOrder(cfg.includeDomains.map((d) => d.trim()).filter(Boolean))) {
+      out.push(mk(q, 'niche', web({ includeDomains: [domain] }), `niche source: ${domain}`));
+    }
+  }
+
+  // 3. source-type — the single strongest lever for the long tail.
   if (axes.has('source-type')) {
-    out.push(mk(q, 'source-type', { limit, sources: ['news'] }, 'news vertical: trade and regional press'));
-    out.push(mk(q, 'source-type', { limit, categories: ['research'] }, 'academic and research sources'));
-    out.push(mk(q, 'source-type', { limit, categories: ['pdf'] }, 'PDF reports and whitepapers'));
+    if (sources.has('news')) {
+      out.push(mk(q, 'source-type', { limit, sources: ['news'] }, 'news vertical: trade and regional press'));
+    }
+    if (sources.has('images')) {
+      out.push(mk(q, 'source-type', { limit, sources: ['images'] }, 'image vertical: visual sources'));
+    }
+    for (const cat of cfg.categories) {
+      const label =
+        cat === 'research' ? 'academic and research sources' : cat === 'pdf' ? 'PDF reports and whitepapers' : 'GitHub repositories';
+      out.push(mk(q, 'source-type', { limit, categories: [cat] }, label));
+    }
     for (const s of SOURCE_TYPE_QUERIES) {
-      out.push(mk(`${q} ${s.suffix}`, 'source-type', { limit, sources: ['web'] }, s.rationale));
+      out.push(mk(`${q} ${s.suffix}`, 'source-type', web(), s.rationale));
     }
   }
 
   // 3. reformulation — re-rank the same web index from different angles.
   if (axes.has('reformulation')) {
     for (const facet of REFORMULATION_FACETS) {
-      out.push(
-        mk(`${q} ${facet}`, 'reformulation', { limit, sources: ['web'] }, `facet: "${facet}"`),
-      );
+      out.push(mk(`${q} ${facet}`, 'reformulation', web(), `facet: "${facet}"`));
     }
   }
 
-  // 4. time — popularity ranking is recency-biased; time filters expose other sources.
-  if (axes.has('time')) {
+  // 4. time — recency-biased ranking; time filters expose other sources. Skipped
+  //    when the user pinned a global time range (that filter already applies).
+  if (axes.has('time') && !tbs) {
     out.push(mk(q, 'time', { limit, sources: ['web'], tbs: 'qdr:y' }, 'past year only'));
     out.push(mk(q, 'time', { limit, sources: ['web'], tbs: 'qdr:m' }, 'past month: freshest sources'));
     out.push(mk(q, 'time', { limit, sources: ['web'], tbs: 'sbd:1' }, 'sorted by date, newest first'));
   }
 
-  // 5. region — location sweep for regional publishers. A user --location biases it.
+  // 5. region — location sweep for regional publishers.
   if (axes.has('region')) {
-    const regions = cfg.location ? [cfg.location, ...DEFAULT_REGIONS] : DEFAULT_REGIONS;
+    const regions = cfg.location ? [cfg.location, ...cfg.regions] : cfg.regions;
     for (const region of dedupeKeepOrder(regions)) {
-      out.push(
-        mk(q, 'region', { limit, sources: ['web'], location: region }, `regional results: ${region}`),
-      );
+      out.push(mk(q, 'region', web({ location: region }), `regional results: ${region}`));
     }
   }
 
   return dedupeProbes(out);
+}
+
+/**
+ * Resolve the time-based-search filter for web probes. A precise `maxAgeDays`
+ * wins (a Firecrawl custom date range, results no older than N days); otherwise
+ * the `timeRange` preset (qdr:*); otherwise none.
+ */
+function resolveTbs(cfg: RunConfig): string | undefined {
+  if (cfg.maxAgeDays && cfg.maxAgeDays > 0) {
+    const max = new Date();
+    const min = new Date(max.getTime() - cfg.maxAgeDays * 86_400_000);
+    const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    return `cdr:1,cd_min:${fmt(min)},cd_max:${fmt(max)}`;
+  }
+  return cfg.timeRange || undefined;
 }
 
 function dedupeKeepOrder(xs: string[]): string[] {

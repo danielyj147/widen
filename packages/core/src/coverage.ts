@@ -214,5 +214,5 @@ export function buildCoverage(
 }
 
 function emptyAxisCounts(): Record<ProbeAxis, number> {
-  return { base: 0, reformulation: 0, 'source-type': 0, time: 0, region: 0 };
+  return { base: 0, reformulation: 0, 'source-type': 0, time: 0, region: 0, niche: 0 };
 }

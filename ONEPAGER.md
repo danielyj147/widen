@@ -103,6 +103,13 @@ query ─▶ expand ─▶ fan-out ─▶ merge/dedup ─▶ coverage report ─
   not depth), top-5 concentration, source-type split.
 - **Verdict** — `thin` / `moderate` / `saturated`, each with a one-line reason.
   Thin coverage is stated loudly, not buried.
+- **Per-phase timing (observability)** — every run records wall-clock for expand
+  / fan-out / merge / coverage / rank, plus each Firecrawl `/search` call's
+  latency, surfaced in a hidden-by-default panel (and one CLI line). It shows
+  clients where the budget goes — fan-out (network) dominates; the local steps,
+  including BM25 + tf-idf MMR, are single-digit-to-tens of ms (tf-idf is
+  classical IR over this run's result set, not an LLM context — cheap by
+  construction).
 
 ### Verified, not asserted
 `npm run eval` runs the customer's exact baseline — one `/search` at `limit 50` —

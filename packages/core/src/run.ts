@@ -10,6 +10,7 @@ import type {
   ProbeResult,
   RunArtifact,
   RunConfig,
+  RunTimings,
   StopReason,
 } from './types.js';
 import { domainOf } from './url.js';
@@ -40,6 +41,7 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
   const startedAt = now();
 
   const { probes: allCandidates, llmUsed, llmError } = await expand(query, cfg, llmEnv);
+  const afterExpand = now();
   emit({ type: 'expanded', probeCount: allCandidates.length, llmUsed, llmError });
 
   const candidates = allCandidates.slice(0, cfg.budget);
@@ -103,11 +105,14 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
     }
   }
 
+  const afterFanout = now();
   const merged = mergeResults(executed);
+  const afterMerge = now();
   // Coverage reflects everything DISCOVERED — compute it on the full merged set,
   // before ranking/filtering, so a minRelevance filter never inflates the
   // completeness story.
   const coverage = buildCoverage(executedProbes, executed, merged, cfg, stopReason);
+  const afterCoverage = now();
   // Ordering + minRelevance are presentation: relevance (RRF + BM25) diversified
   // by MMR, then sub-threshold sources dropped from the displayed list.
   const sources = orderSources(merged, query, {
@@ -116,6 +121,18 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
     minRelevance: cfg.minRelevance,
   });
   const finishedAt = now();
+
+  const probeMs = [...executed].map((r) => r.ms).sort((a, b) => a - b);
+  const timings: RunTimings = {
+    expandMs: afterExpand - startedAt,
+    fanoutMs: afterFanout - afterExpand,
+    mergeMs: afterMerge - afterFanout,
+    coverageMs: afterCoverage - afterMerge,
+    rankMs: finishedAt - afterCoverage,
+    totalMs: finishedAt - startedAt,
+    probeMsP50: probeMs.length ? probeMs[Math.floor(probeMs.length / 2)]! : 0,
+    probeMsMax: probeMs.length ? probeMs[probeMs.length - 1]! : 0,
+  };
 
   return {
     schemaVersion: 1,
@@ -132,5 +149,6 @@ export async function run(query: string, opts: RunOptions): Promise<RunArtifact>
     // Firecrawl /search bills roughly per result returned (≈1 credit/result;
     // we never scrape, so no scrape surcharge). This is an estimate.
     estimatedCredits: coverage.totalRawResults,
+    timings,
   };
 }

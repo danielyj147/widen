@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SaturationChart } from './SaturationChart';
+import { Timings, type ProbeCall } from './Timings';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,18 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const axisEntries = Object.entries(cov.diversity.byAxis).filter(([, n]) => n > 0);
   const maxAxis = Math.max(1, ...axisEntries.map(([, n]) => n));
 
+  const calls: ProbeCall[] = run.probeResults.map((r) => {
+    const p = probeById.get(r.probeId);
+    return {
+      query: p?.query ?? r.probeId,
+      axis: p?.axis ?? '',
+      ms: r.ms,
+      status: r.status,
+      hits: r.results.length,
+      attempts: r.attempts,
+    };
+  });
+
   return (
     <div className="space-y-5">
       <a href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm">
@@ -74,6 +87,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
               ? `ranked: RRF + BM25, MMR diversity ${run.config.diversity ?? 0}`
               : 'discovery order'}
           </p>
+          {run.timings && <Timings t={run.timings} calls={calls} />}
         </CardContent>
       </Card>
 

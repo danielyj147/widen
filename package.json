@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "eval": "node --env-file=.env --import tsx apps/cli/src/eval.ts",
     "eval:rank": "node --env-file=.env --import tsx apps/cli/src/eval-rank.ts",
-    "web": "npm run dev --workspace @widen/web"
+    "web": "npm run dev --workspace @widen/web",
+    "build": "npm run build --workspace @widen/web"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

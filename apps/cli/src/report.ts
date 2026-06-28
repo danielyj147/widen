@@ -41,6 +41,14 @@ export function renderArtifact(a: RunArtifact): string {
         : 'discovery order (--no-rerank)',
     )}`,
   );
+  const t = a.timings;
+  if (t) {
+    L.push(
+      `  timing       ${c.dim(
+        `${fmtMs(t.totalMs)} total · fan-out ${fmtMs(t.fanoutMs)} (probe p50 ${fmtMs(t.probeMsP50)}/max ${fmtMs(t.probeMsMax)}) · merge ${fmtMs(t.mergeMs)} · coverage ${fmtMs(t.coverageMs)} · rank ${fmtMs(t.rankMs)}`,
+      )}`,
+    );
+  }
   L.push('');
 
   // where the long tail came from — the whole point of the tool
@@ -70,6 +78,10 @@ export function renderArtifact(a: RunArtifact): string {
   if (a.sources.length > 12) L.push(c.dim(`    … and ${a.sources.length - 12} more (see the dashboard, or --json)`));
   L.push('');
   return L.join('\n') + '\n';
+}
+
+function fmtMs(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}s` : `${Math.round(n)}ms`;
 }
 
 function bar(n: number, total: number): string {

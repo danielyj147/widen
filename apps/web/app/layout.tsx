@@ -11,6 +11,10 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 export const metadata = {
   title: 'widen — search coverage',
   description: 'Probe wide, merge, and see how complete a Firecrawl search actually was.',
+  // We already ship our own dark theme — tell the Dark Reader extension to leave
+  // the page alone (its official opt-out). This also stops the extension from
+  // mutating the DOM and tripping hydration warnings.
+  other: { 'darkreader-lock': 'true' },
 };
 
 export const dynamic = 'force-dynamic';

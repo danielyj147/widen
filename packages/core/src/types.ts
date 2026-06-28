@@ -153,6 +153,23 @@ export interface RunConfig {
   location?: string;
 }
 
+/**
+ * Per-phase wall-clock timing (ms), for client-facing observability — where the
+ * latency budget actually goes. Fan-out dominates (network); local steps
+ * (merge/coverage/rank, incl. BM25 + tf-idf MMR) are typically single-digit ms.
+ */
+export interface RunTimings {
+  expandMs: number;
+  fanoutMs: number;
+  mergeMs: number;
+  coverageMs: number;
+  rankMs: number;
+  totalMs: number;
+  /** median and max single-probe latency across the fan-out. */
+  probeMsP50: number;
+  probeMsMax: number;
+}
+
 export interface RunArtifact {
   schemaVersion: 1;
   id: string;
@@ -167,4 +184,6 @@ export interface RunArtifact {
   coverage: CoverageReport;
   /** estimated Firecrawl credits spent (1 search ≈ 1 credit + scrape costs; we don't scrape). */
   estimatedCredits: number;
+  /** per-phase wall-clock timing for client observability. */
+  timings: RunTimings;
 }

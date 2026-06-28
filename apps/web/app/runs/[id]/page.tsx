@@ -31,12 +31,10 @@ const verdictClass: Record<Verdict, string> = {
 function Stat({
   value,
   label,
-  sub,
   info,
 }: {
   value: React.ReactNode;
   label: string;
-  sub?: string;
   info?: React.ReactNode;
 }) {
   return (
@@ -47,7 +45,6 @@ function Stat({
           {label}
           {info && <InfoTip>{info}</InfoTip>}
         </div>
-        {sub && <div className="text-muted-foreground/70 text-[11px]">{sub}</div>}
       </CardContent>
     </Card>
   );
@@ -108,52 +105,48 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         <CardContent className="space-y-2">
           <p className="text-sm">{cov.verdictReason}</p>
           <p className="text-muted-foreground text-xs">
-            {new Date(run.createdAt).toLocaleString()} · stopped because{' '}
-            <span className="font-mono">{stopReasonText(cov.stopReason)}</span> · ~
-            {run.estimatedCredits} credits ·{' '}
-            {run.config.llm ? 'LLM-enhanced expansion' : 'deterministic expansion'} ·{' '}
-            {run.config.rerank
-              ? `ranked by relevance + diversity (diversity ${run.config.diversity ?? 0})`
-              : 'discovery order'}
+            {new Date(run.createdAt).toLocaleString()} · {stopReasonText(cov.stopReason)} · ~
+            {run.estimatedCredits} credits
             {run.config.maxAgeDays
               ? ` · ≤${run.config.maxAgeDays}d old`
               : run.config.timeRange
-                ? ` · time ${run.config.timeRange}`
+                ? ` · ${run.config.timeRange}`
                 : ''}
             {run.config.includeDomains?.length
-              ? ` · ${run.config.includeDomains.length} niche domain(s)`
+              ? ` · ${run.config.includeDomains.length} specific site(s)`
               : ''}
           </p>
           {run.timings && <Timings t={run.timings} calls={calls} />}
         </CardContent>
       </Card>
 
-      {/* headline stats */}
+      {/* headline numbers */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat
           value={cov.uniqueDomains}
-          label="sources"
-          sub="distinct websites"
+          label="websites"
           info={
             <>
-              A <b>source</b> is one website / publisher (e.g. <span className="font-mono">nytimes.com</span>).
-              Several pages from the same site count once. This is what the customer means by “sources we
-              miss”.
+              Distinct websites found (e.g. <span className="font-mono">nytimes.com</span>). Several pages
+              from the same website count once.
             </>
           }
         />
-        <Stat value={cov.uniqueUrls} label="pages" sub="distinct result URLs" />
+        <Stat
+          value={cov.uniqueUrls}
+          label="pages"
+          info="Distinct links found, across every search."
+        />
         <Stat
           value={pct(recap.coverage)}
-          label="est. coverage"
-          sub="of findable sources"
+          label="coverage"
           info={
             <>
-              A statistical estimate (<b>capture–recapture / Chao1</b>) of what share of the
-              <em> findable</em> sources this run actually found. We infer the total from how often sites
-              repeat across search angles: if many sites show up in only one angle, many more likely exist.
-              It’s an estimate, not a guarantee — {recap.singletons} of {recap.observedDomains} sources came
-              from a single angle here.
+              Our best guess at the share of findable websites this run actually found.{' '}
+              <b>How we guess:</b> if many websites show up in just one of our searches, there are likely
+              many more we haven’t hit yet — the way spotting lots of one-off animals while sampling a
+              forest means more species are out there. We turn that overlap into an estimate (a standard
+              method called capture–recapture). It’s a guess, not a guarantee.
             </>
           }
         />
@@ -165,13 +158,11 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             </>
           }
           label="searches ok"
-          sub={cov.probesFailed > 0 ? `${cov.probesFailed} failed` : 'all succeeded'}
           info={
             <>
-              Each <b>search</b> is one Firecrawl <span className="font-mono">/search</span> call from a
-              specific angle — a reformulation, a region, a source type, a niche site, etc. widen fans out
-              many of them and merges the results. “ok” = the call returned results;
-              the rest failed, timed out, were rate-limited, or came back empty.
+              Each search is one query sent to Firecrawl with a twist — a reworded version, a region, a
+              site type, a specific website. We run many and combine the results. “ok” = the search came
+              back with results; the rest failed, timed out, or were empty.
             </>
           }
         />
@@ -181,10 +172,10 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-1.5 text-sm">
-            Are we still finding new sources?
+            Still finding new websites?
             <InfoTip>
-              As each search runs, we track how many <b>new</b> sources it adds. A line that keeps climbing
-              means there’s more to find; a flat tail means the search has saturated.
+              Each search adds some <b>new</b> websites. A line that keeps climbing means there’s more to
+              find; a line that flattens means we’ve likely found most of them.
             </InfoTip>
           </CardTitle>
         </CardHeader>
@@ -192,46 +183,44 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           <SaturationChart curve={cov.saturationCurve} estimatedTotal={recap.estimatedTotalDomains} />
           <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
             <span className="flex items-center gap-1.5">
-              <LegendSwatch kind="line" /> cumulative sources found (running total)
+              <LegendSwatch kind="line" /> websites found so far
             </span>
             <span className="flex items-center gap-1.5">
-              <LegendSwatch kind="bar" /> new sources each search added
+              <LegendSwatch kind="bar" /> new websites per search
             </span>
             <span className="flex items-center gap-1.5">
-              <LegendSwatch kind="dashed" /> estimated total findable (~{recap.estimatedTotalDomains})
+              <LegendSwatch kind="dashed" /> estimated total out there (~{recap.estimatedTotalDomains})
             </span>
           </div>
-          <p className="text-muted-foreground/80 mt-2 text-[11px]">{recap.caveat}</p>
         </CardContent>
       </Card>
 
-      {/* where coverage came from */}
+      {/* where results came from */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-1.5 text-sm">
-            Which search angles found sources
+            Where the results came from
             <InfoTip>
-              Distinct sources contributed by each kind of search. Shows where the long tail actually came
-              from — e.g. regional or niche angles, not the base query.
+              How many websites each kind of search contributed. Shows whether the extras came from
+              rewordings, regions, or specific sites — not just the plain query.
             </InfoTip>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {axisEntries.map(([axis, nSources]) => (
+          {axisEntries.map(([axis, nSites]) => (
             <div key={axis} className="flex items-center gap-3 text-sm">
-              <span className="w-32 flex-none font-mono text-xs">{axisLabel(axis)}</span>
+              <span className="w-32 flex-none text-xs">{axisLabel(axis)}</span>
               <div className="bg-muted h-2 flex-1 overflow-hidden rounded">
-                <div className="bg-primary h-full rounded" style={{ width: `${(nSources / maxAxis) * 100}%` }} />
+                <div className="bg-primary h-full rounded" style={{ width: `${(nSites / maxAxis) * 100}%` }} />
               </div>
               <span className="text-muted-foreground w-24 flex-none text-right font-mono text-xs">
-                {nSources} sources
+                {nSites} sites
               </span>
             </div>
           ))}
           <Separator className="my-1" />
           <p className="text-muted-foreground text-xs">
-            Top 5 sites hold {pct(cov.diversity.top5DomainShare)} of all results ·{' '}
-            {Object.entries(cov.diversity.bySource).map(([s, c]) => `${c} ${s}`).join(' · ')}
+            Top 5 websites hold {pct(cov.diversity.top5DomainShare)} of all results.
           </p>
         </CardContent>
       </Card>
@@ -240,15 +229,15 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       {cov.failures.length > 0 && (
         <Card className="border-amber-500/30">
           <CardHeader>
-            <CardTitle className="text-sm text-amber-400">Failed searches ({cov.failures.length})</CardTitle>
+            <CardTitle className="text-sm text-amber-400">Searches that failed ({cov.failures.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>status</TableHead>
+                  <TableHead>what happened</TableHead>
                   <TableHead>search</TableHead>
-                  <TableHead>error</TableHead>
+                  <TableHead>detail</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -273,11 +262,11 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-1.5 text-sm">
-            Results ({run.sources.length} pages)
+            Results ({run.sources.length})
             <InfoTip>
-              Every distinct page found, deduped across all searches and ordered by relevance + diversity. A
-              <Star className="mx-1 inline size-3 fill-amber-400 text-amber-400" /> marks a page found by only
-              one search angle — usually the long-tail sources that a single search misses.
+              Every page found, with duplicates removed and ordered best-first. A
+              <Star className="mx-1 inline size-3 fill-amber-400 text-amber-400" /> means only one search
+              found it — usually the hard-to-find pages a single search misses.
             </InfoTip>
           </CardTitle>
         </CardHeader>
@@ -286,46 +275,40 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
             <TableHeader>
               <TableRow>
                 <TableHead className="w-6" />
-                <TableHead>site</TableHead>
+                <TableHead>website</TableHead>
                 <TableHead>page</TableHead>
-                <TableHead className="w-44">found by</TableHead>
+                <TableHead className="w-32">found by</TableHead>
                 <TableHead className="w-16">type</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {run.sources.map((s) => {
-                const axes = [
-                  ...new Set(s.foundByProbes.map((p) => probeById.get(p)?.axis).filter(Boolean)),
-                ];
-                return (
-                  <TableRow key={s.url}>
-                    <TableCell>
-                      {s.foundByProbes.length === 1 && (
-                        <Star className="size-3 fill-amber-400 text-amber-400" />
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{s.domain}</TableCell>
-                    <TableCell>
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary inline-flex items-center gap-1 hover:underline"
-                      >
-                        <span className="line-clamp-1">{s.title || s.url}</span>
-                        <ExternalLink className="size-3 flex-none opacity-60" />
-                      </a>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {s.foundByProbes.length} search{s.foundByProbes.length === 1 ? '' : 'es'}
-                      <span className="text-muted-foreground"> · {axes.map((a) => axisLabel(String(a))).join(', ')}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="font-normal">{s.source}</Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {run.sources.map((s) => (
+                <TableRow key={s.url}>
+                  <TableCell>
+                    {s.foundByProbes.length === 1 && (
+                      <Star className="size-3 fill-amber-400 text-amber-400" />
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{s.domain}</TableCell>
+                  <TableCell>
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary inline-flex items-center gap-1 hover:underline"
+                    >
+                      <span className="line-clamp-1">{s.title || s.url}</span>
+                      <ExternalLink className="size-3 flex-none opacity-60" />
+                    </a>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    {s.foundByProbes.length} search{s.foundByProbes.length === 1 ? '' : 'es'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-normal">{s.source}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -334,23 +317,24 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   );
 }
 
+/** Plain-English name for each kind of search. */
 function axisLabel(axis: string): string {
   const map: Record<string, string> = {
-    base: 'base query',
-    reformulation: 'reformulation',
-    'source-type': 'source type',
-    time: 'time window',
-    region: 'region',
-    niche: 'niche domain',
+    base: 'plain search',
+    reformulation: 'reworded search',
+    'source-type': 'news / pdf / forums',
+    time: 'by date',
+    region: 'by region',
+    niche: 'specific sites',
   };
   return map[axis] ?? axis;
 }
 
 function stopReasonText(r: string): string {
   const map: Record<string, string> = {
-    saturated: 'saturated (no new sources)',
-    'budget-exhausted': 'hit the probe budget',
-    'probes-exhausted': 'ran every search angle',
+    saturated: 'stopped — no new websites',
+    'budget-exhausted': 'stopped — hit the search limit',
+    'probes-exhausted': 'stopped — ran every search',
   };
   return map[r] ?? r;
 }

@@ -2,9 +2,9 @@ import type { SaturationPoint } from '@widen/core';
 
 /**
  * The saturation curve: cumulative unique domains (line) and per-probe new
- * domains (bars), with the Chao1 estimate of total discoverable domains as a
- * dashed reference. A line that keeps climbing = still finding the long tail; a
- * flat tail = saturated. Pure SVG, themed via CSS tokens.
+ * websites (bars), with the Chao1 estimate of the total out there as a dashed
+ * reference. A line that keeps climbing = still finding more; a flat tail =
+ * saturated. Pure SVG, themed via CSS tokens.
  */
 export function SaturationChart({
   curve,
@@ -50,7 +50,7 @@ export function SaturationChart({
         searches →
       </text>
       <text x={W - pad.r} y={H - 8} fill="var(--muted-foreground)" fontSize="10" textAnchor="end">search {n}</text>
-      <text x={4} y={pad.t + 8} fill="var(--primary)" fontSize="10">sources</text>
+      <text x={4} y={pad.t + 8} fill="var(--primary)" fontSize="10">websites</text>
     </svg>
   );
 }

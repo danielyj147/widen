@@ -2,9 +2,10 @@
 
 A recall-maximizing layer on Firecrawl `/search` that probes a topic many
 different ways, merges the results, and **reports how complete the search
-actually was.** CLI-first (overnight batch jobs), with a dashboard that makes the
-coverage legible. Built for the competitive-intelligence customer whose whole
-complaint is completeness.
+actually was.** CLI-first (overnight batch jobs), paired with **Firecrawl
+Studio** — a dashboard that makes the coverage legible (the CLI does the work,
+Studio makes it explorable; Prisma ↔ Prisma Studio). Built for the
+competitive-intelligence customer whose whole complaint is completeness.
 
 ---
 
@@ -309,8 +310,8 @@ npm run widen -- search "solid state battery suppliers"
 npm run widen -- batch examples/queries.txt --budget 24   # overnight-job shape
 npm run widen -- list                                      # browse past runs
 
-# 3. the dashboard (reads the same runs/ folder; can run searches ad hoc)
-npm run web                 # http://localhost:3939
+# 3. Firecrawl Studio — the dashboard (reads the same runs/ folder; runs searches ad hoc)
+npm run studio              # http://localhost:3939
 
 # 4. the verifiable claims
 npm run eval         # completeness: baseline limit=50 vs the fan-out (net-new domains)

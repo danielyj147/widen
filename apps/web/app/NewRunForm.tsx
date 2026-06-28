@@ -19,12 +19,12 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const AXES = [
-  { key: 'base', label: 'base query' },
-  { key: 'reformulation', label: 'reformulations' },
-  { key: 'source-type', label: 'source types' },
-  { key: 'time', label: 'time windows' },
-  { key: 'region', label: 'regional sweep' },
-  { key: 'niche', label: 'niche domains' },
+  { key: 'base', label: 'plain search' },
+  { key: 'reformulation', label: 'reworded searches' },
+  { key: 'source-type', label: 'news / pdf / forums' },
+  { key: 'time', label: 'by date' },
+  { key: 'region', label: 'by region' },
+  { key: 'niche', label: 'specific sites' },
 ];
 const SOURCES = [
   { key: 'web', label: 'web' },
@@ -176,7 +176,7 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
           </Field>
 
           <Field>
-            <Label htmlFor="includeDomains">Niche domains</Label>
+            <Label htmlFor="includeDomains">Specific sites</Label>
             <Textarea
               id="includeDomains"
               name="includeDomains"
@@ -185,11 +185,11 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
               disabled={disabled}
             />
             <p className="text-muted-foreground text-[11px]">
-              Searched directly — surfaces sources that don’t rank in open search.
+              Searched directly — finds sites that don’t show up in normal results.
             </p>
           </Field>
           <Field>
-            <Label>Search strategies</Label>
+            <Label>Search types</Label>
             <div className="grid grid-cols-2 gap-2">
               {AXES.map((a) => (
                 <label key={a.key} className="flex items-center gap-2 text-sm">

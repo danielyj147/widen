@@ -1,6 +1,6 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Flame, Plus } from 'lucide-react';
 import type { RunSummary } from '@widen/core';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,10 @@ export function Sidebar({ runs }: { runs: RunSummary[] }) {
   const pathname = usePathname();
   return (
     <aside className="bg-sidebar text-sidebar-foreground sticky top-0 flex h-screen w-72 flex-none flex-col border-r">
-      <div className="border-b px-4 py-4">
+      <div className="flex items-center gap-2 border-b px-4 py-4">
+        <Flame className="text-primary size-4" />
         <a href="/" className="text-[15px] font-semibold tracking-tight">
-          <span className="text-primary">widen</span>{' '}
-          <span className="text-muted-foreground font-normal">· search coverage</span>
+          Firecrawl Studio
         </a>
       </div>
       <div className="p-3">
@@ -42,8 +42,8 @@ export function Sidebar({ runs }: { runs: RunSummary[] }) {
                   <a
                     href={`/runs/${r.id}`}
                     className={cn(
-                      'block rounded-md px-2.5 py-2 hover:bg-muted',
-                      active && 'bg-muted ring-primary/60 shadow-[inset_2px_0_0] shadow-primary',
+                      'hover:bg-muted/60 block rounded-md px-2.5 py-2',
+                      active && 'bg-muted',
                     )}
                   >
                     <div className="truncate text-[13px]">{r.query}</div>

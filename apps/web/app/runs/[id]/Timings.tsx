@@ -58,8 +58,8 @@ export function Timings({ t, calls }: { t: RunTimings; calls: ProbeCall[] }) {
           className="text-muted-foreground hover:text-foreground group flex items-center gap-1.5 text-xs"
         >
           <Clock className="size-3.5" />
-          Timing &amp; observability
-          <span className="font-mono">· {ms(t.totalMs)} total</span>
+          Timing
+          <span className="font-mono">{ms(t.totalMs)}</span>
           <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
         </button>
       </CollapsibleTrigger>

@@ -61,9 +61,9 @@ export function chao1(domainIncidence: number[]): RecaptureEstimate {
     coverage,
     method,
     caveat:
-      'A statistical estimate (it assumes the different search angles find sites ' +
-      'somewhat independently). Many sites turning up in only one angle is strong ' +
-      'evidence that more remain unfound.',
+      'A statistical estimate: it assumes the different searches find websites ' +
+      'somewhat independently. Many websites showing up in only one search is ' +
+      'strong evidence that more remain unfound.',
   };
 }
 
@@ -123,7 +123,7 @@ function decideVerdict(
   if (cov != null && cov >= 0.8 && tailFlat) {
     return {
       verdict: 'saturated',
-      reason: `The last ${tail.length} searches barely turned up new sites, and we estimate this run found about ${pct(cov)} of the sites worth finding. More searching is unlikely to surface much.`,
+      reason: `The last ${tail.length} searches barely turned up new websites, and we estimate this run found about ${pct(cov)} of the websites out there. More searching probably won't add much.`,
     };
   }
   if ((cov != null && cov < 0.5) || !tailFlat) {
@@ -131,13 +131,13 @@ function decideVerdict(
       verdict: 'thin',
       reason:
         cov != null && cov < 0.5
-          ? `We estimate this run found only about ${pct(cov)} of the sites worth finding — ${recapture.singletons} of ${recapture.observedDomains} sites turned up in just one search angle, a sign many more exist. Coverage is likely incomplete.`
-          : 'New sites were still appearing in the final searches — coverage had not leveled off when the run stopped.',
+          ? `We estimate this run found only about ${pct(cov)} of the websites out there — ${recapture.singletons} of ${recapture.observedDomains} websites showed up in just one search, a sign many more exist. Likely incomplete.`
+          : 'New websites were still showing up in the final searches — the run stopped before results leveled off.',
     };
   }
   return {
     verdict: 'moderate',
-    reason: `We estimate about ${cov != null ? pct(cov) : 'n/a'} coverage of the sites worth finding: results are leveling off, but some long-tail sources may remain.`,
+    reason: `About ${cov != null ? pct(cov) : 'n/a'} estimated coverage: results are leveling off, but some hard-to-find websites may remain.`,
   };
 }
 

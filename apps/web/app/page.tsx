@@ -8,10 +8,10 @@ export default async function Home() {
   const keyPresent = hasApiKey();
   return (
     <div className="mx-auto mt-[8vh] max-w-2xl">
-      <h2 className="text-2xl font-semibold tracking-tight">Search wider, not deeper</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">Find every source, not just the popular ones</h2>
       <p className="text-muted-foreground mt-1 text-sm">
-        One query becomes many probes across news, regional press, forums, and primary docs — then
-        merged, deduped, and scored for how complete the search actually was.
+        One query runs as many searches — news, regions, forums, specific sites — then we combine them
+        and tell you how much you’re likely missing.
       </p>
 
       {!keyPresent && (

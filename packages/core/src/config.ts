@@ -20,6 +20,7 @@ export const DEFAULT_CONFIG: RunConfig = {
   maxRetries: 3,
   perProbeTimeoutMs: 30_000,
   llm: false,
+  rerank: true,
   saturationMinNewDomains: 2,
   saturationPatience: 2,
   axes: ALL_AXES,

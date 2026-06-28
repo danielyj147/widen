@@ -68,6 +68,14 @@ export interface MergedSource {
   foundByProbes: string[];
   /** Best (lowest) rank this source achieved in any single probe. */
   bestPosition: number;
+  /**
+   * Reciprocal Rank Fusion score: sum over the probes that found this source of
+   * 1/(RRF_K + rank). Rewards good ranks and corroboration across probes, while
+   * still scoring a source that ranked highly in a single niche probe — so the
+   * long tail is ordered fairly, not buried. Always computed; only used for
+   * ordering when reranking is on.
+   */
+  rrfScore: number;
   source: 'web' | 'news';
 }
 
@@ -127,6 +135,8 @@ export interface RunConfig {
   maxRetries: number;
   perProbeTimeoutMs: number;
   llm: boolean;
+  /** order the merged sources by Reciprocal Rank Fusion (default true). */
+  rerank: boolean;
   /** adaptive stop: min new domains a wave must add to keep going. */
   saturationMinNewDomains: number;
   /** adaptive stop: consecutive low-yield waves tolerated before stopping. */

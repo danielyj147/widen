@@ -33,6 +33,7 @@ ${c.bold('OPTIONS')}
   --location <name>   bias the region sweep, e.g. "Germany"
   --axes <list>       comma list of: ${ALL_AXES.join(',')}
   --llm               use LLM-enhanced expansion (reads LLM_* env; off by default)
+  --no-rerank         keep discovery order instead of Reciprocal Rank Fusion
   --out <dir>         where run artifacts live        (default ./runs)
   --no-save           don't write an artifact
   --json              print the full artifact as JSON (implies --quiet)
@@ -73,6 +74,7 @@ function parse(argv: string[]): CliOpts {
       axes: { type: 'string' },
       out: { type: 'string' },
       llm: { type: 'boolean' },
+      'no-rerank': { type: 'boolean' },
       'no-save': { type: 'boolean' },
       json: { type: 'boolean' },
       quiet: { type: 'boolean' },
@@ -89,6 +91,7 @@ function configFrom(values: CliOpts['values']): Partial<RunConfig> {
   if (values.limit) cfg.perProbeLimit = int('--limit', values.limit as string);
   if (values.location) cfg.location = values.location as string;
   if (values.llm) cfg.llm = true;
+  if (values['no-rerank']) cfg.rerank = false;
   if (values.axes) {
     const axes = (values.axes as string).split(',').map((a) => a.trim()) as ProbeAxis[];
     const bad = axes.filter((a) => !ALL_AXES.includes(a));

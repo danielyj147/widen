@@ -34,6 +34,7 @@ export function renderArtifact(a: RunArtifact): string {
   const newPerProbe = cov.saturationCurve.map((p) => p.newDomains);
   L.push(`  saturation   ${c.cyan(sparkline(newPerProbe))}  ${c.dim('(new domains per probe; flat tail = saturated)')}`);
   L.push(`  stopped on   ${c.dim(cov.stopReason)}   est. credits ${c.dim(String(a.estimatedCredits))}`);
+  L.push(`  ranked by    ${c.dim(a.config.rerank ? 'Reciprocal Rank Fusion' : 'discovery order (--no-rerank)')}`);
   L.push('');
 
   // where the long tail came from — the whole point of the tool

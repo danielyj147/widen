@@ -2,6 +2,18 @@ import type { MergedSource, ProbeResult } from './types.js';
 import { canonicalizeUrl, domainOf } from './url.js';
 
 /**
+ * RRF dampening constant. 60 is the value from the original Cormack et al. (2009)
+ * paper and the de-facto default; it keeps any single probe's #1 result from
+ * dominating, so corroboration across probes matters more than one lucky rank.
+ */
+export const RRF_K = 60;
+
+function rrfContribution(position: number | undefined): number {
+  // Results with no known rank contribute negligibly rather than not at all.
+  return 1 / (RRF_K + (position ?? 999));
+}
+
+/**
  * Collapse every probe's raw results into a unique source set. Provenance is the
  * point: `foundByProbes` records which probes surfaced each source, which is both
  * what the dashboard shows ("this niche forum came only from the region sweep")
@@ -20,6 +32,8 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
       if (existing) {
         if (!existing.foundByProbes.includes(pr.probeId)) {
           existing.foundByProbes.push(pr.probeId);
+          // RRF sums across the distinct probes that found the source.
+          existing.rrfScore += rrfContribution(r.position);
         }
         if (r.position != null && r.position < existing.bestPosition) {
           existing.bestPosition = r.position;
@@ -35,14 +49,32 @@ export function mergeResults(probeResults: ProbeResult[]): MergedSource[] {
           snippet: r.snippet,
           foundByProbes: [pr.probeId],
           bestPosition: r.position ?? 999,
+          rrfScore: rrfContribution(r.position),
           source: r.source,
         });
       }
     }
   }
 
+  // Baseline (rerank-off) order: best single-probe rank, then corroboration.
   return [...byUrl.values()].sort(
     (a, b) =>
       a.bestPosition - b.bestPosition || b.foundByProbes.length - a.foundByProbes.length,
+  );
+}
+
+/**
+ * Reorder merged sources by Reciprocal Rank Fusion. This is widen's default
+ * ranking: it fuses every probe's ranked list into one order that rewards both
+ * a good rank and agreement across probes — the principled way to combine the
+ * many rankings widen produces. Ties break toward more corroboration, then the
+ * better single-probe rank. Returns a new array; the input is left untouched.
+ */
+export function rerankSources(sources: MergedSource[]): MergedSource[] {
+  return [...sources].sort(
+    (a, b) =>
+      b.rrfScore - a.rrfScore ||
+      b.foundByProbes.length - a.foundByProbes.length ||
+      a.bestPosition - b.bestPosition,
   );
 }

@@ -33,6 +33,10 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
           <input name="llm" type="checkbox" style={{ width: 'auto' }} disabled={disabled} />
           LLM expand
         </label>
+        <label className="dim small row" style={{ gap: 6 }}>
+          <input name="rerank" type="checkbox" defaultChecked style={{ width: 'auto' }} disabled={disabled} />
+          rerank (RRF)
+        </label>
         <SubmitButton />
       </div>
       <p className="dim small" style={{ marginBottom: 0 }}>

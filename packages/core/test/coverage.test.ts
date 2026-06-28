@@ -38,9 +38,9 @@ describe('chao1', () => {
 describe('domainIncidence', () => {
   it('counts distinct probes per domain across multiple urls', () => {
     const sources: MergedSource[] = [
-      { url: 'https://a.com/1', domain: 'a.com', title: '', snippet: '', foundByProbes: ['p1'], bestPosition: 1, source: 'web' },
-      { url: 'https://a.com/2', domain: 'a.com', title: '', snippet: '', foundByProbes: ['p2'], bestPosition: 2, source: 'web' },
-      { url: 'https://b.com', domain: 'b.com', title: '', snippet: '', foundByProbes: ['p1'], bestPosition: 1, source: 'web' },
+      { url: 'https://a.com/1', domain: 'a.com', title: '', snippet: '', foundByProbes: ['p1'], bestPosition: 1, rrfScore: 0, source: 'web' },
+      { url: 'https://a.com/2', domain: 'a.com', title: '', snippet: '', foundByProbes: ['p2'], bestPosition: 2, rrfScore: 0, source: 'web' },
+      { url: 'https://b.com', domain: 'b.com', title: '', snippet: '', foundByProbes: ['p1'], bestPosition: 1, rrfScore: 0, source: 'web' },
     ];
     // a.com seen by p1+p2 => 2; b.com by p1 => 1
     expect(domainIncidence(sources).sort()).toEqual([1, 2]);

@@ -18,6 +18,9 @@ export async function createRunAction(
 
   const budget = clampInt(formData.get('budget'), 24, 1, 60);
   const llm = formData.get('llm') === 'on';
+  // The rerank checkbox is checked by default; an absent value means the user
+  // unchecked it (opt-out), matching the CLI's --no-rerank.
+  const rerank = formData.get('rerank') === 'on';
   const location = String(formData.get('location') ?? '').trim() || undefined;
 
   let id: string;
@@ -25,6 +28,7 @@ export async function createRunAction(
     const artifact = await createRun(query, {
       budget,
       llm,
+      rerank,
       location,
       axes: ['base', 'reformulation', 'source-type', 'time', 'region'] as ProbeAxis[],
     });

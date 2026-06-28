@@ -71,7 +71,6 @@ export function NewRunForm({ disabled }: { disabled: boolean }) {
         />
         <SubmitButton />
       </div>
-      <p className="text-muted-foreground text-xs">Takes ~10–30s.</p>
 
       <Collapsible>
         <CollapsibleTrigger asChild>

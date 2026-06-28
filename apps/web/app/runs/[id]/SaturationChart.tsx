@@ -50,7 +50,6 @@ export function SaturationChart({
         searches →
       </text>
       <text x={W - pad.r} y={H - 8} fill="var(--muted-foreground)" fontSize="10" textAnchor="end">search {n}</text>
-      <text x={4} y={pad.t + 8} fill="var(--primary)" fontSize="10">websites</text>
     </svg>
   );
 }
